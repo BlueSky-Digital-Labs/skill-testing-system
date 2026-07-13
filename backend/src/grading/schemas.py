@@ -75,3 +75,36 @@ class MultiSelectScoreForm(forms.Form):
         if not all(isinstance(option, str) for option in correct_options):
             raise forms.ValidationError('Correct options must be strings.')
         return correct_options
+
+
+class EnqueueFreeTextForm(forms.Form):
+    attempt_id = forms.CharField(max_length=64)
+    test_id = forms.CharField(max_length=64)
+    question_id = forms.CharField(max_length=64)
+    question_version = forms.CharField(max_length=32, required=False)
+    candidate_display = forms.CharField(max_length=255, required=False)
+    blind_marking = forms.BooleanField(required=False)
+    response_text = forms.CharField()
+    max_points = forms.DecimalField(min_value=0, max_digits=8, decimal_places=2)
+    topic = forms.CharField(max_length=128)
+
+
+class QueueListForm(forms.Form):
+    status = forms.ChoiceField(
+        choices=[('queued', 'Queued'), ('graded', 'Graded')],
+        required=False,
+    )
+    test_id = forms.CharField(max_length=64, required=False)
+    attempt_id = forms.CharField(max_length=64, required=False)
+
+
+class ManualGradeForm(forms.Form):
+    queue_item_id = forms.UUIDField()
+    awarded_points = forms.DecimalField(min_value=0, max_digits=8, decimal_places=2)
+    feedback = forms.CharField(required=False)
+
+
+class AggregateAttemptForm(forms.Form):
+    attempt_id = forms.CharField(max_length=64)
+    test_id = forms.CharField(max_length=64, required=False)
+

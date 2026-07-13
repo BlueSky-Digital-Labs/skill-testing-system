@@ -50,3 +50,86 @@ class ObjectiveScore(models.Model):
             f'Score {self.id} attempt={self.attempt_id} '
             f'question={self.question_id}'
         )
+
+
+class FreeTextQueueItem(models.Model):
+    STATUS_QUEUED = 'queued'
+    STATUS_GRADED = 'graded'
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, 'Queued'),
+        (STATUS_GRADED, 'Graded'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    attempt_id = models.CharField(max_length=64, db_index=True)
+    test_id = models.CharField(max_length=64, db_index=True)
+    question_id = models.CharField(max_length=64, db_index=True)
+    question_version = models.CharField(max_length=32, null=True, blank=True)
+    candidate_display = models.CharField(max_length=255, null=True, blank=True)
+    blind_marking = models.BooleanField(default=False)
+    response_text = models.TextField()
+    max_points = models.DecimalField(max_digits=8, decimal_places=2)
+    topic = models.CharField(max_length=128)
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_QUEUED,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'free text queue item'
+        verbose_name_plural = 'free text queue items'
+        indexes = [
+            models.Index(fields=['status', 'test_id']),
+            models.Index(fields=['attempt_id', 'question_id']),
+        ]
+
+    def __str__(self):
+        return (
+            f'Queue item {self.id} attempt={self.attempt_id} '
+            f'question={self.question_id} ({self.status})'
+        )
+
+
+class ManualGrade(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    queue_item = models.OneToOneField(
+        FreeTextQueueItem,
+        on_delete=models.CASCADE,
+        related_name='manual_grade',
+    )
+    grader_user_id = models.IntegerField()
+    awarded_points = models.DecimalField(max_digits=8, decimal_places=2)
+    feedback = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'manual grade'
+        verbose_name_plural = 'manual grades'
+
+    def __str__(self):
+        return f'Manual grade {self.id} for queue item {self.queue_item_id}'
+
+
+class CombinedResult(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    attempt_id = models.CharField(max_length=64, unique=True, db_index=True)
+    test_id = models.CharField(max_length=64, db_index=True)
+    total_awarded = models.DecimalField(max_digits=10, decimal_places=2)
+    total_max = models.DecimalField(max_digits=10, decimal_places=2)
+    by_topic = models.JSONField(default=dict, blank=True)
+    passed = models.BooleanField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'combined result'
+        verbose_name_plural = 'combined results'
+
+    def __str__(self):
+        return f'Combined result {self.attempt_id} passed={self.passed}'
+
+
+from .config import TestConfigSnapshot  # noqa: E402,F401

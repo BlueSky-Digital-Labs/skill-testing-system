@@ -322,6 +322,11 @@ make test-coverage
 | `/api/grading/true-false/` | POST | Score a true/false question | JWT (staff) |
 | `/api/grading/fib/` | POST | Score a fill-in-the-blank question | JWT (staff) |
 | `/api/grading/multi-select/` | POST | Score a multi-select question | JWT (staff) |
+| `/api/grading/queue/enqueue-free-text/` | POST | Enqueue a free-text response for manual grading | JWT (staff) |
+| `/api/grading/queue/list/` | GET | List manual grading queue items | JWT (staff) |
+| `/api/grading/grade/` | POST | Submit a manual grade for a queue item | JWT (staff) |
+| `/api/grading/aggregate/attempt/` | POST | Aggregate objective + manual scores for an attempt | JWT (staff) |
+| `/api/grading/result/<attempt_id>/` | GET | Retrieve persisted combined result | JWT (staff) |
 
 ## 📖 API Documentation
 
@@ -548,6 +553,57 @@ curl -X POST http://localhost:8000/api/grading/multi-select/ \
     "scoring_policy_id": "POLICY_UUID"
   }'
 ```
+
+### Manual Grading and Combined Results (staff, FR-24 / FR-25)
+
+Free-text responses are enqueued for manual grading. Graders submit scores that are combined with auto-scored objective results. When `blind_marking` is enabled, `candidate_display` is omitted from API responses.
+
+```bash
+# Enqueue a free-text response
+curl -X POST http://localhost:8000/api/grading/queue/enqueue-free-text/ \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "attempt_id": "attempt-123",
+    "test_id": "test-456",
+    "question_id": "question-essay-1",
+    "question_version": "1",
+    "candidate_display": "Jane Candidate",
+    "blind_marking": true,
+    "response_text": "My essay response...",
+    "max_points": "10.00",
+    "topic": "essay"
+  }'
+
+# List queue items (optional filters: status, test_id, attempt_id)
+curl -X GET "http://localhost:8000/api/grading/queue/list/?status=queued" \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN"
+
+# Submit a manual grade
+curl -X POST http://localhost:8000/api/grading/grade/ \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "queue_item_id": "QUEUE_ITEM_UUID",
+    "awarded_points": "8.50",
+    "feedback": "Well structured answer."
+  }'
+
+# Aggregate objective + manual scores for an attempt
+curl -X POST http://localhost:8000/api/grading/aggregate/attempt/ \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "attempt_id": "attempt-123",
+    "test_id": "test-456"
+  }'
+
+# Retrieve persisted combined result
+curl -X GET http://localhost:8000/api/grading/result/attempt-123/ \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN"
+```
+
+Pass/fail is determined from `TestConfigSnapshot` using `passing_score` and `pass_type` (`absolute` or `percent`).
 
 ## 🌐 CORS Configuration
 
