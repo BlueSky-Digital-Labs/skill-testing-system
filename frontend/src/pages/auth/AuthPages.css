@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background-color: #f9fafb;
+  background-color: var(--hd-bg-secondary);
 }
 
 .auth-container {
@@ -78,13 +78,13 @@
 }
 
 .auth-link {
-  color: #3b82f6;
+  color: var(--brand-primary);
   font-weight: 500;
   text-decoration: none;
 }
 
 .auth-link:hover {
-  color: #2563eb;
+  color: var(--hd-secondary-dark);
   text-decoration: underline;
 }
 

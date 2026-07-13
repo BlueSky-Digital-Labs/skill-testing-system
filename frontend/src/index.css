@@ -82,3 +82,11 @@ input, textarea, select {
     background: #64748b;
   }
 }
+
+.admin-route-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hd-text-secondary);
+}

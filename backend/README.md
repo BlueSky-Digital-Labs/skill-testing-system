@@ -56,6 +56,13 @@ backend/
 │       ├── admin.py
 │       ├── tasks.py            # Celery tasks
 │       └── tests/
+│   └── branding/               # Organization branding settings
+│       ├── models.py           # OrganizationSettings singleton
+│       ├── serializers.py
+│       ├── views.py
+│       ├── urls.py
+│       ├── admin.py
+│       └── tests/
 ├── requirements.txt
 ├── Dockerfile
 ├── entrypoint.sh
@@ -300,6 +307,8 @@ make test-coverage
 | `/api/auth/password/reset/` | POST | Confirm password reset with token | None |
 | `/api/auth/me/` | GET | Current user profile | JWT |
 | `/api/auth/users/` | GET | List users | JWT |
+| `/api/admin/settings` | GET | Organization branding settings | JWT (staff) |
+| `/api/admin/settings/update` | POST | Update branding settings (JSON or multipart) | JWT (staff) |
 
 ## 📖 API Documentation
 
@@ -425,6 +434,33 @@ curl -X POST http://localhost:8000/api/auth/token/refresh/ \
   -d '{"refresh": "YOUR_REFRESH_TOKEN"}'
 ```
 
+### Organization Branding Settings (admin)
+
+Staff users can manage organization-level branding (logo, theme colors, email header/footer HTML).
+
+```bash
+# Get current settings
+curl -X GET http://localhost:8000/api/admin/settings \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN"
+
+# Update colors and email HTML (JSON)
+curl -X POST http://localhost:8000/api/admin/settings/update \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "primary_color": "#0A5FFF",
+    "secondary_color": "#111827",
+    "email_header_html": "<p>Welcome</p>",
+    "email_footer_html": "<p>Thanks for reading</p>"
+  }'
+
+# Upload a logo (multipart)
+curl -X POST http://localhost:8000/api/admin/settings/update \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN" \
+  -F "logo=@/path/to/logo.png" \
+  -F "primary_color=#0A5FFF"
+```
+
 ## 🌐 CORS Configuration
 
 CORS settings are loaded from environment variables:
@@ -450,6 +486,19 @@ Static files are handled by **WhiteNoise**:
 # Manually collect static files
 make collectstatic
 ```
+
+## 📷 Media Files
+
+User-uploaded media (organization logos, etc.) are stored on disk:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `MEDIA_ROOT` | `backend/media/` | Filesystem path for uploads |
+| `MEDIA_URL` | `/media/` | URL prefix for uploaded files |
+
+In development (`DEBUG=True`), Django serves media files directly. In production, configure your reverse proxy or object storage to serve `/media/` (Django does not serve media in production by default).
+
+Uploaded branding logos are stored under `branding/` within `MEDIA_ROOT`.
 
 ## 🗄️ Database Migrations & Indexing
 

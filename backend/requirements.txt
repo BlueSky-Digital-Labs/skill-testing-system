@@ -12,6 +12,10 @@ psycopg[binary]~=3.1.0
 # CORS and static files
 django-cors-headers~=4.3.0
 whitenoise~=6.6.0
+Pillow~=10.4.0
+
+# HTML sanitization
+bleach~=6.1.0
 
 # Environment configuration
 django-environ~=0.11.0

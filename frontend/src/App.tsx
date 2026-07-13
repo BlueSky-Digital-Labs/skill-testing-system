@@ -3,7 +3,9 @@ import { useSelector } from 'react-redux'
 import { RootState } from '@store/index'
 import { LoginPage, RegisterPage, SignIn, ForgotPassword, ResetPassword } from '@pages/auth'
 import { DashboardPage } from '@pages/dashboard'
+import { BrandingPage } from '@pages/admin/branding'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
+import { AdminRoute } from '@components/organisms/AdminRoute'
 
 function App() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
@@ -27,6 +29,16 @@ function App() {
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <DashboardPage />
           </ProtectedRoute>
+        }
+      />
+
+      {/* Admin routes */}
+      <Route
+        path="/admin/branding"
+        element={
+          <AdminRoute isAuthenticated={isAuthenticated}>
+            <BrandingPage />
+          </AdminRoute>
         }
       />
     </Routes>

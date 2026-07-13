@@ -2,6 +2,7 @@ import { useAuth } from '@hooks/useAuth'
 import { useDashboardContent } from '@hooks/useContent'
 import { DashboardLayout } from '@components/templates/DashboardLayout'
 import { DashboardCard } from '@components/molecules/DashboardCard'
+import { useSearchParams } from 'react-router-dom'
 import { 
   Users, 
   Briefcase, 
@@ -15,6 +16,8 @@ import './DashboardPage.css'
 const DashboardPage = () => {
   const { user } = useAuth()
   const dashboardContent = useDashboardContent()
+  const [searchParams] = useSearchParams()
+  const showAccessDenied = searchParams.get('access') === 'denied'
 
   const dashboardData = {
     totalWorkers: 11,
@@ -47,6 +50,11 @@ const DashboardPage = () => {
   return (
     <DashboardLayout>
       <div className="dashboard-page">
+        {showAccessDenied && (
+          <div className="dashboard-access-denied" role="alert">
+            Access denied. You do not have permission to view that page.
+          </div>
+        )}
         <div className="dashboard-header">
           <div className="welcome-section">
             <h1>{dashboardContent.welcome.title}, {user?.email?.split('@')[0] || 'User'}!</h1>

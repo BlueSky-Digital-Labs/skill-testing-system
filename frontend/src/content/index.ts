@@ -84,7 +84,8 @@ export const content = {
       skillMatrix: 'Skill Matrix',
       discoverySession: 'Discovery Session',
       feedback: 'Feedback',
-      settings: 'Settings'
+      settings: 'Settings',
+      branding: 'Branding'
     },
     user: {
       logout: 'Logout'

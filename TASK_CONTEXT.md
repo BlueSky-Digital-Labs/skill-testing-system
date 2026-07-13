@@ -1,74 +1,86 @@
-# Task Context: JWT Auth & Password Reset (feat-97a2d06b)
+# Task Context: Organization Branding Settings (feat-6210f644)
 
 ## Scope
 
 ### Backend (completed)
-- Email-based JWT token obtain and refresh
-- Password reset request and confirm endpoints
-- `PasswordResetToken` model with expiry and single-use semantics
-- Email settings driven by environment variables
+- Organization-level branding settings API (`branding` Django app)
+- Logo upload, theme colors, email header/footer HTML with server-side sanitization
+- Admin-only REST endpoints at `/api/admin/settings` and `/api/admin/settings/update`
 
 ### Frontend (this iteration)
-- Fetch-based auth API client (`signIn`, `refreshToken`, `forgotPassword`, `resetPassword`)
-- Sign-in, forgot password, and reset password pages
-- Routing at `/auth/sign-in`, `/auth/forgot`, `/auth/reset`
-- Token storage helpers and optional 401 refresh retry helper
-- Vitest smoke tests for the API client
+- Admin Branding configuration page at `/admin/branding`
+- API client for branding settings (`getBranding`, `updateBranding`)
+- App-wide theming via `ThemeContext` and CSS variables (`--brand-primary`, `--brand-secondary`)
+- Admin route protection and sidebar navigation link
+- Client-side HTML preview sanitization and logo upload validation
 
 ## Key Implementation Decisions
 
 ### Backend
-1. **Settings location**: `backend/src/core/settings/base.py` with `django-environ`.
-2. **Email authentication**: `authentication.backends.EmailBackend` for `authenticate(email=..., password=...)`.
-3. **URL layout**: Auth mounted at `api/`; endpoints live under `/api/auth/...`.
-4. **Enumeration safety**: Forgot-password endpoint always returns HTTP 200.
+1. **Singleton model**: `OrganizationSettings.load()` returns or creates the single settings row.
+2. **Admin access**: DRF `IsAdminUser` (requires `is_staff=True`) with JWT authentication.
+3. **Update endpoint**: `POST /api/admin/settings/update` (also accepts PUT/PATCH).
+4. **HTML sanitization**: `bleach` with allowlisted tags; script/style blocks stripped.
 
 ### Frontend
-1. **API client location**: New `frontend/src/api/` module using `fetch` per ticket spec (legacy axios service kept for register/login pages).
-2. **API base URL**: `getApiBase()` resolves to `${VITE_API_BASE_URL}/api` or `/api` when unset (Vite proxy / same-origin deploy).
-3. **Token storage**: `authStorage.ts` stores `access_token` and `refresh_token`, and mirrors access token to legacy `token` key for existing interceptors.
-4. **Redux integration**: `setSession` reducer updates auth state after successful sign-in without replacing legacy login flow.
-5. **UX/accessibility**: Accessible labels on all fields, keyboard-navigable controls, `aria-live` regions for errors and success messages.
-6. **Tests**: Added Vitest because the frontend previously had no test runner; smoke tests mock `fetch` for request/response handling.
+1. **API client location**: `frontend/src/api/branding.ts` using `authorizedFetch` with existing JWT auth.
+2. **Update endpoint**: Uses `POST /api/admin/settings/update` to match backend (multipart when logo included).
+3. **Admin access check**: `AdminRoute` and `useAdminAccess` verify staff by calling `getBranding()`; 403 redirects to `/dashboard?access=denied`.
+4. **Theme bootstrap**: `ThemeProvider` applies cached branding from `localStorage` immediately, then refreshes from API when authenticated.
+5. **CSS variables**: `--brand-primary` / `--brand-secondary` mapped to existing `--hd-*` shell variables.
+6. **Preview sanitization**: Client-side `sanitizeHtmlForPreview()` strips scripts, event handlers, and `javascript:` URLs before `dangerouslySetInnerHTML`.
+7. **Logo validation**: Max 2MB, image MIME types only; preview via `URL.createObjectURL`.
 
 ## Files Changed
 
 ### Backend
 | File | Why |
 |------|-----|
-| `backend/requirements.txt` | Pin DRF 3.15.* and simplejwt 5.3.* |
-| `backend/src/core/settings/base.py` | JWT lifetimes, email settings, auth backends |
-| `backend/src/authentication/*` | Model, serializers, views, URLs, tests |
-| `backend/README.md` | Endpoint documentation |
+| `backend/src/branding/` | Model, views, serializers, URLs, admin, tests |
+| `backend/src/core/settings/base.py` | `BrandingConfig`, `MEDIA_ROOT`/`MEDIA_URL` |
+| `backend/src/core/urls.py` | Include branding URLs; dev media serving |
+| `backend/requirements.txt` | Pillow, bleach |
+| `backend/README.md` | Endpoint and media documentation |
 
 ### Frontend
 | File | Why |
 |------|-----|
-| `frontend/src/api/auth.ts` | Fetch-based auth API functions |
-| `frontend/src/api/authStorage.ts` | localStorage token helpers |
-| `frontend/src/api/http.ts` | Optional 401 refresh retry |
-| `frontend/src/api/auth.test.ts` | Vitest smoke tests |
-| `frontend/src/pages/auth/SignIn.tsx` | Sign-in page |
-| `frontend/src/pages/auth/ForgotPassword.tsx` | Forgot password page |
-| `frontend/src/pages/auth/ResetPassword.tsx` | Reset password page |
-| `frontend/src/App.tsx` | New auth routes |
-| `frontend/src/store/slices/authSlice.ts` | `setSession` + authStorage integration |
-| `frontend/vitest.config.ts` | Test runner config |
-| `frontend/package.json` | `test` script, vitest/jsdom deps |
-| `frontend/README.md` | Env vars, routes, manual verification |
+| `frontend/src/pages/admin/branding/` | BrandingPage UI with logo, colors, email HTML editors |
+| `frontend/src/api/branding.ts` | `getBranding`, `updateBranding`, validation helpers |
+| `frontend/src/api/branding.test.ts` | API client and validation tests |
+| `frontend/src/theme/ThemeContext.tsx` | App-wide theme provider |
+| `frontend/src/theme/brandCss.ts` | CSS variable application helper |
+| `frontend/src/utils/sanitizeHtml.ts` | Client-side HTML preview sanitization |
+| `frontend/src/components/organisms/AdminRoute/` | Staff-only route guard |
+| `frontend/src/hooks/useAdminAccess.ts` | Sidebar admin visibility hook |
+| `frontend/src/App.tsx` | `/admin/branding` route |
+| `frontend/src/main.tsx` | Wrap app in `ThemeProvider` |
+| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Branding nav link for admins |
+| `frontend/src/styles/theme.css` | Brand CSS variable defaults |
+| `frontend/src/pages/auth/AuthPages.css` | Use brand variables on sign-in flow |
+| `frontend/src/pages/dashboard/DashboardPage.tsx` | Access denied banner |
+
+## API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/admin/settings` | GET | JWT (staff) | Get organization branding settings |
+| `/api/admin/settings/update` | POST | JWT (staff) | Update settings (JSON or multipart) |
 
 ## Verification
 
 ### Backend
 ```bash
 cd backend
+pip install -r requirements.txt
 PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret \
-  python3 manage.py test authentication
+  python3 manage.py test branding authentication
 ```
 
 ### Frontend
 ```bash
 cd frontend
+npm install
 npm run test
 npm run lint
 npm run build
@@ -76,5 +88,14 @@ npm run build
 
 ## Open Questions / Follow-ups
 
-- Legacy `/login` and `authService.ts` still use older endpoints; consider deprecating once all flows use `/auth/sign-in`.
-- `http.ts` is available but not yet wired into the axios `apiService` interceptor.
+- Backend profile API does not expose `is_staff`; admin access is verified via branding API call.
+- Public read endpoint for branding would allow unauthenticated theme bootstrap without cache.
+- Production media serving requires reverse-proxy or object-storage configuration.
+- Legacy axios auth stack still uses separate token key from `authStorage`.
+
+## Assumptions / Limitations
+
+- Branding is global (single organization).
+- Non-staff users see default/cached theme colors only.
+- Inline `style` attributes are stripped server-side from saved email HTML.
+- Logo removal via API requires sending empty/null `logo` field (not yet exposed in UI).
