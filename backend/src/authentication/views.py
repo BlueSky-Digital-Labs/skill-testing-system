@@ -6,23 +6,29 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
-    TokenRefreshView,
+    TokenRefreshView as SimpleJWTTokenRefreshView,
     TokenVerifyView,
 )
 from django.contrib.auth import login
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from drf_spectacular.openapi import OpenApiTypes
 
 from .models import User
+from .password_reset import create_password_reset_token, send_password_reset_email
 from .serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
     UserProfileSerializer,
     TokenResponseSerializer,
-    ErrorResponseSerializer
+    ErrorResponseSerializer,
+    TokenObtainSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
 )
 
 
@@ -262,7 +268,7 @@ class DocumentedTokenObtainPairView(TokenObtainPairView):
         return super().post(request, *args, **kwargs)
 
 
-class DocumentedTokenRefreshView(TokenRefreshView):
+class DocumentedTokenRefreshView(SimpleJWTTokenRefreshView):
     @extend_schema(
         tags=['Authentication'],
         summary='Refresh JWT token',
@@ -280,3 +286,58 @@ class DocumentedTokenVerifyView(TokenVerifyView):
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
+
+
+class EmailTokenObtainPairView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = TokenObtainSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            if user:
+                reset_token = create_password_reset_token(user)
+                send_password_reset_email(user, reset_token)
+            return Response(status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            reset_token = serializer.validated_data['reset_token']
+            user = reset_token.user
+            user.set_password(serializer.validated_data['new_password'])
+            user.save(update_fields=['password'])
+            reset_token.used_at = timezone.now()
+            reset_token.save(update_fields=['used_at'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+TokenRefreshView = SimpleJWTTokenRefreshView

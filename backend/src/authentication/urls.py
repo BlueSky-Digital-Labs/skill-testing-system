@@ -6,13 +6,17 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    register_view, 
-    login_view, 
-    profile_view, 
+    register_view,
+    login_view,
+    profile_view,
     UserViewSet,
     DocumentedTokenObtainPairView,
     DocumentedTokenRefreshView,
-    DocumentedTokenVerifyView
+    DocumentedTokenVerifyView,
+    EmailTokenObtainPairView,
+    TokenRefreshView,
+    PasswordResetRequestView,
+    PasswordResetConfirmView,
 )
 
 
@@ -23,15 +27,21 @@ router.register(r'users', UserViewSet)
 
 urlpatterns = [
     # Custom auth endpoints
-    path('register/', register_view, name='register'),
-    path('login/', login_view, name='login'),
-    path('me/', profile_view, name='profile'),
-    
-    # JWT endpoints
-    path('jwt/create/', DocumentedTokenObtainPairView.as_view(), name='jwt_create'),
-    path('jwt/refresh/', DocumentedTokenRefreshView.as_view(), name='jwt_refresh'),
-    path('jwt/verify/', DocumentedTokenVerifyView.as_view(), name='jwt_verify'),
-    
+    path('auth/register/', register_view, name='register'),
+    path('auth/login/', login_view, name='login'),
+    path('auth/me/', profile_view, name='profile'),
+
+    # JWT endpoints (legacy)
+    path('auth/jwt/create/', DocumentedTokenObtainPairView.as_view(), name='jwt_create'),
+    path('auth/jwt/refresh/', DocumentedTokenRefreshView.as_view(), name='jwt_refresh'),
+    path('auth/jwt/verify/', DocumentedTokenVerifyView.as_view(), name='jwt_verify'),
+
+    # JWT and password reset endpoints
+    path('auth/token/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/password/forgot/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('auth/password/reset/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+
     # Include router URLs
-    path('', include(router.urls)),
+    path('auth/', include(router.urls)),
 ]

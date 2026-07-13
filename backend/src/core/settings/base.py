@@ -117,6 +117,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
 
+AUTHENTICATION_BACKENDS = [
+    'authentication.backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -176,8 +181,8 @@ SPECTACULAR_SETTINGS = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=env.int("SIMPLE_JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=60)),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=env.int("SIMPLE_JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=7)),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': env.bool("SIMPLE_JWT_ROTATE_REFRESH_TOKENS", default=True),
     'BLACKLIST_AFTER_ROTATION': env.bool("SIMPLE_JWT_BLACKLIST_AFTER_ROTATION", default=True),
     'UPDATE_LAST_LOGIN': env.bool("SIMPLE_JWT_UPDATE_LAST_LOGIN", default=True),
@@ -201,6 +206,14 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+
+# Email configuration
+EMAIL_BACKEND = env(
+    'EMAIL_BACKEND',
+    default='django.core.mail.backends.console.EmailBackend',
+)
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='no-reply@example.test')
+FRONTEND_URL = env('FRONTEND_URL', default=None)
 
 # Celery Configuration
 CELERY_TIMEZONE = TIME_ZONE
