@@ -1,0 +1,62 @@
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.input-group--full-width {
+  width: 100%;
+}
+
+.input__label {
+  font-size: var(--hd-font-size-sm);
+  font-weight: 500;
+  color: var(--hd-text-primary);
+  margin-bottom: var(--hd-space-1);
+}
+
+.input {
+  padding: var(--hd-space-3) var(--hd-space-3);
+  border: 1px solid var(--hd-border-light);
+  border-radius: var(--hd-radius-md);
+  font-size: var(--hd-font-size-sm);
+  line-height: 1.25rem;
+  transition: var(--hd-transition-base);
+  outline: none;
+  background-color: var(--hd-bg-primary);
+  color: var(--hd-text-primary);
+}
+
+.input:focus {
+  border-color: var(--hd-secondary);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.input:disabled {
+  background-color: var(--hd-bg-tertiary);
+  color: var(--hd-text-tertiary);
+  cursor: not-allowed;
+}
+
+.input--error {
+  border-color: var(--hd-error);
+}
+
+.input--error:focus {
+  border-color: var(--hd-error);
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+}
+
+.input__error {
+  font-size: var(--hd-font-size-xs);
+  color: var(--hd-error);
+  margin-top: var(--hd-space-1);
+}
+
+.input__helper {
+  font-size: var(--hd-font-size-xs);
+  color: var(--hd-text-secondary);
+  margin-top: var(--hd-space-1);
+}
+
+/* Dark mode styles are handled by CSS variables in theme.css */

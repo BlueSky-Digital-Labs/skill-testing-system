@@ -1,0 +1,21 @@
+.form-field {
+  margin-bottom: 1rem;
+}
+
+.form-field__input-wrapper {
+  position: relative;
+}
+
+.form-field__input-wrapper--with-icon .input {
+  padding-left: 2.5rem;
+}
+
+.form-field__icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  z-index: 1;
+  pointer-events: none;
+}

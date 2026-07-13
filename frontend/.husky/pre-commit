@@ -1,0 +1,29 @@
+echo "🔍 Running pre-commit checks..."
+
+# Run lint-staged first (linting and formatting)
+echo "📝 Checking code quality..."
+npx lint-staged
+
+# Check if lint-staged passed
+if [ $? -ne 0 ]; then
+  echo "❌ Lint-staged failed. Please fix the issues and try again."
+  exit 1
+fi
+
+# Run build check
+echo "🏗️  Checking if project builds successfully..."
+if command -v bun >/dev/null 2>&1; then
+  echo "Using bun for build check..."
+  bun run build
+else
+  echo "Using npm for build check..."
+  npm run build
+fi
+
+# Check if build passed
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed. Please fix the build errors and try again."
+  exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"

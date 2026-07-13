@@ -1,0 +1,71 @@
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Logo Sizes */
+.logo--sm {
+  width: 120px;
+  height: auto;
+}
+
+.logo--md {
+  width: 160px;
+  height: auto;
+}
+
+.logo--lg {
+  width: 200px;
+  height: auto;
+}
+
+.logo--xl {
+  width: 280px;
+  height: auto;
+}
+
+.logo--2xl {
+  width: 360px;
+  height: auto;
+}
+
+.logo-image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .logo--xl {
+    width: 240px;
+  }
+  
+  .logo--2xl {
+    width: 280px;
+  }
+  
+  .logo--lg {
+    width: 160px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo--xl {
+    width: 200px;
+  }
+  
+  .logo--2xl {
+    width: 240px;
+  }
+  
+  .logo--lg {
+    width: 140px;
+  }
+  
+  .logo--md {
+    width: 120px;
+  }
+}
