@@ -52,6 +52,9 @@ urlpatterns = [
 
     # Branding / organization settings
     path('', include('branding.urls')),
+
+    # Auto-scoring
+    path('api/grading/', include('grading.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

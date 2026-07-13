@@ -1,101 +1,63 @@
-# Task Context: Organization Branding Settings (feat-6210f644)
+# Task Context: Backend Auto-Scoring Engine (feat-24624271)
 
 ## Scope
 
-### Backend (completed)
-- Organization-level branding settings API (`branding` Django app)
-- Logo upload, theme colors, email header/footer HTML with server-side sanitization
-- Admin-only REST endpoints at `/api/admin/settings` and `/api/admin/settings/update`
+Implement a Django `grading` app that provides deterministic, side-effect-free scoring services and staff-protected HTTP endpoints for objective question types:
 
-### Frontend (this iteration)
-- Admin Branding configuration page at `/admin/branding`
-- API client for branding settings (`getBranding`, `updateBranding`)
-- App-wide theming via `ThemeContext` and CSS variables (`--brand-primary`, `--brand-secondary`)
-- Admin route protection and sidebar navigation link
-- Client-side HTML preview sanitization and logo upload validation
+- Multiple choice (MCQ)
+- True/false
+- Fill in the blank (FIB)
+- Multi-select
+
+Persist each scoring result as an `ObjectiveScore` and support optional `ScoringPolicy` rules for partial credit and negative marking.
 
 ## Key Implementation Decisions
 
-### Backend
-1. **Singleton model**: `OrganizationSettings.load()` returns or creates the single settings row.
-2. **Admin access**: DRF `IsAdminUser` (requires `is_staff=True`) with JWT authentication.
-3. **Update endpoint**: `POST /api/admin/settings/update` (also accepts PUT/PATCH).
-4. **HTML sanitization**: `bleach` with allowlisted tags; script/style blocks stripped.
-
-### Frontend
-1. **API client location**: `frontend/src/api/branding.ts` using `authorizedFetch` with existing JWT auth.
-2. **Update endpoint**: Uses `POST /api/admin/settings/update` to match backend (multipart when logo included).
-3. **Admin access check**: `AdminRoute` and `useAdminAccess` verify staff by calling `getBranding()`; 403 redirects to `/dashboard?access=denied`.
-4. **Theme bootstrap**: `ThemeProvider` applies cached branding from `localStorage` immediately, then refreshes from API when authenticated.
-5. **CSS variables**: `--brand-primary` / `--brand-secondary` mapped to existing `--hd-*` shell variables.
-6. **Preview sanitization**: Client-side `sanitizeHtmlForPreview()` strips scripts, event handlers, and `javascript:` URLs before `dangerouslySetInnerHTML`.
-7. **Logo validation**: Max 2MB, image MIME types only; preview via `URL.createObjectURL`.
+1. **App location**: `backend/src/grading/` registered as `grading.apps.GradingConfig` in `core/settings/base.py` (project uses modular settings, not `backend/src/settings.py`).
+2. **URL routing**: Endpoints mounted at `/api/grading/` via `core/urls.py`.
+3. **Scoring services**: Pure functions in `services.py` with no database access; views persist results after scoring.
+4. **Validation**: Django `forms.Form` classes in `schemas.py` for request payload validation.
+5. **Authentication**: `@require_staff_or_examiner` decorator authenticates JWT (SimpleJWT) then requires `is_staff=True`.
+6. **Views**: Django class-based views (`View`) with JSON request/response; CSRF exempt for API usage.
+7. **FIB normalization**: Trim, casefold, and collapse internal whitespace before comparison.
+8. **Multi-select partial credit**: When `partial_credit=True` and `per_option_value > 0`, award per correctly selected option; subtract for incorrect selections when `negative_marking=True`; clamp to `[0, max_points]` or `[-max_points, max_points]`.
 
 ## Files Changed
 
-### Backend
 | File | Why |
 |------|-----|
-| `backend/src/branding/` | Model, views, serializers, URLs, admin, tests |
-| `backend/src/core/settings/base.py` | `BrandingConfig`, `MEDIA_ROOT`/`MEDIA_URL` |
-| `backend/src/core/urls.py` | Include branding URLs; dev media serving |
-| `backend/requirements.txt` | Pillow, bleach |
-| `backend/README.md` | Endpoint and media documentation |
-
-### Frontend
-| File | Why |
-|------|-----|
-| `frontend/src/pages/admin/branding/` | BrandingPage UI with logo, colors, email HTML editors |
-| `frontend/src/api/branding.ts` | `getBranding`, `updateBranding`, validation helpers |
-| `frontend/src/api/branding.test.ts` | API client and validation tests |
-| `frontend/src/theme/ThemeContext.tsx` | App-wide theme provider |
-| `frontend/src/theme/brandCss.ts` | CSS variable application helper |
-| `frontend/src/utils/sanitizeHtml.ts` | Client-side HTML preview sanitization |
-| `frontend/src/components/organisms/AdminRoute/` | Staff-only route guard |
-| `frontend/src/hooks/useAdminAccess.ts` | Sidebar admin visibility hook |
-| `frontend/src/App.tsx` | `/admin/branding` route |
-| `frontend/src/main.tsx` | Wrap app in `ThemeProvider` |
-| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Branding nav link for admins |
-| `frontend/src/styles/theme.css` | Brand CSS variable defaults |
-| `frontend/src/pages/auth/AuthPages.css` | Use brand variables on sign-in flow |
-| `frontend/src/pages/dashboard/DashboardPage.tsx` | Access denied banner |
+| `backend/src/grading/` | New app: models, services, schemas, auth, views, urls, admin, tests, migrations |
+| `backend/src/core/settings/base.py` | Register `GradingConfig`; add OpenAPI tag |
+| `backend/src/core/urls.py` | Include `grading.urls` at `/api/grading/` |
+| `backend/README.md` | Document grading endpoints and example payloads |
 
 ## API Endpoints
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/admin/settings` | GET | JWT (staff) | Get organization branding settings |
-| `/api/admin/settings/update` | POST | JWT (staff) | Update settings (JSON or multipart) |
+| `/api/grading/mcq/` | POST | JWT (staff) | Score multiple-choice question |
+| `/api/grading/true-false/` | POST | JWT (staff) | Score true/false question |
+| `/api/grading/fib/` | POST | JWT (staff) | Score fill-in-the-blank question |
+| `/api/grading/multi-select/` | POST | JWT (staff) | Score multi-select question |
 
 ## Verification
 
-### Backend
 ```bash
 cd backend
 pip install -r requirements.txt
 PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret \
-  python3 manage.py test branding authentication
-```
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run test
-npm run lint
-npm run build
+  python3 manage.py test grading authentication branding
 ```
 
 ## Open Questions / Follow-ups
 
-- Backend profile API does not expose `is_staff`; admin access is verified via branding API call.
-- Public read endpoint for branding would allow unauthenticated theme bootstrap without cache.
-- Production media serving requires reverse-proxy or object-storage configuration.
-- Legacy axios auth stack still uses separate token key from `authStorage`.
+- Add dedicated examiner role/permission beyond `is_staff` if product requires finer-grained access.
+- Expose scoring policies via CRUD API for admin configuration.
+- Register grading views with drf-spectacular for Swagger documentation.
+- Batch scoring endpoint for scoring an entire attempt in one request.
 
 ## Assumptions / Limitations
 
-- Branding is global (single organization).
-- Non-staff users see default/cached theme colors only.
-- Inline `style` attributes are stripped server-side from saved email HTML.
-- Logo removal via API requires sending empty/null `logo` field (not yet exposed in UI).
+- `attempt_id` and `question_id` are opaque string identifiers (not FKs to other apps yet).
+- Invalid or missing `scoring_policy_id` is treated as no policy (default scoring rules).
+- Grading endpoints are write-only; no list/retrieve API for historical scores in this iteration.
