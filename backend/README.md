@@ -125,7 +125,7 @@ Edit the `.env` file with your specific values:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SIMPLE_JWT_ACCESS_TOKEN_LIFETIME_MINUTES` | Access token lifetime | `60` (1 hour) |
+| `SIMPLE_JWT_ACCESS_TOKEN_LIFETIME_MINUTES` | Access token lifetime | `15` (15 minutes) |
 | `SIMPLE_JWT_REFRESH_TOKEN_LIFETIME_DAYS` | Refresh token lifetime | `7` days |
 | `SIMPLE_JWT_ROTATE_REFRESH_TOKENS` | Rotate refresh tokens | `True` |
 | `SIMPLE_JWT_ALGORITHM` | JWT algorithm | `HS256` |
@@ -136,6 +136,14 @@ Edit the `.env` file with your specific values:
 |----------|-------------|---------|
 | `CELERY_BROKER_URL` | Redis URL for Celery broker | `redis://redis:6379/0` |
 | `CELERY_RESULT_BACKEND` | Redis URL for results | `redis://redis:6379/1` |
+
+#### Email & Password Reset Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `EMAIL_BACKEND` | Django email backend class | `django.core.mail.backends.console.EmailBackend` |
+| `DEFAULT_FROM_EMAIL` | Sender address for outbound email | `no-reply@example.test` |
+| `FRONTEND_URL` | Frontend base URL for password reset links | None |
 
 ## 🚀 Running the Application
 
@@ -286,6 +294,10 @@ make test-coverage
 | `/api/auth/jwt/create/` | POST | Obtain JWT token | None |
 | `/api/auth/jwt/refresh/` | POST | Refresh JWT token | None |
 | `/api/auth/jwt/verify/` | POST | Verify JWT token | None |
+| `/api/auth/token/` | POST | Obtain JWT tokens (email + password) | None |
+| `/api/auth/token/refresh/` | POST | Refresh JWT access token | None |
+| `/api/auth/password/forgot/` | POST | Request password reset email | None |
+| `/api/auth/password/reset/` | POST | Confirm password reset with token | None |
 | `/api/auth/me/` | GET | Current user profile | JWT |
 | `/api/auth/users/` | GET | List users | JWT |
 
@@ -369,6 +381,46 @@ curl -X GET http://localhost:8000/api/auth/me/ \
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/jwt/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{"refresh": "YOUR_REFRESH_TOKEN"}'
+```
+
+### Password Reset
+
+Request a reset link (always returns 200 to avoid revealing whether an account exists):
+
+```bash
+curl -X POST http://localhost:8000/api/auth/password/forgot/ \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com"}'
+```
+
+Confirm the reset with the token from the email:
+
+```bash
+curl -X POST http://localhost:8000/api/auth/password/reset/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "RESET_TOKEN_FROM_EMAIL",
+    "new_password": "newSecurePassword123"
+  }'
+```
+
+### JWT Token Obtain (email-based)
+
+```bash
+curl -X POST http://localhost:8000/api/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepassword123"
+  }'
+```
+
+### JWT Token Refresh
+
+```bash
+curl -X POST http://localhost:8000/api/auth/token/refresh/ \
   -H "Content-Type: application/json" \
   -d '{"refresh": "YOUR_REFRESH_TOKEN"}'
 ```

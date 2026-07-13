@@ -2,9 +2,18 @@
 Authentication models with custom email-only User.
 """
 
+import uuid
+from datetime import timedelta
+
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.contrib.auth.base_user import BaseUserManager
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+
+def default_password_reset_expires_at():
+    return timezone.now() + timedelta(hours=1)
 
 
 class UserManager(BaseUserManager):
@@ -80,3 +89,15 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.email.split('@')[0]
+
+
+class PasswordResetToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    token = models.CharField(max_length=128, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=default_password_reset_expires_at)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def is_valid(self):
+        return self.expires_at > timezone.now() and self.used_at is None

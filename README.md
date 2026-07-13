@@ -25,7 +25,7 @@ This monorepo provides a complete full-stack solution with:
 - **PostgreSQL** database
 - **Redis** for caching and Celery
 - **Celery** for background tasks
-- **JWT Authentication**
+- **JWT Authentication** with email-based login and password reset
 - **Docker containerization**
 
 ### Frontend (React)
@@ -559,6 +559,23 @@ make restore BACKUP_FILE=backup_prod_20231201_120000.sql ENV=prod
 - Basic security for local development
 - Debug mode enabled
 - Console email backend
+
+#### Authentication API (Backend)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/token/` | POST | Obtain JWT access and refresh tokens |
+| `/api/auth/token/refresh/` | POST | Refresh an access token |
+| `/api/auth/password/forgot/` | POST | Request a password reset email |
+| `/api/auth/password/reset/` | POST | Reset password with token |
+
+#### Authentication Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `EMAIL_BACKEND` | Django email backend | `django.core.mail.backends.console.EmailBackend` |
+| `DEFAULT_FROM_EMAIL` | Outbound email sender | `no-reply@example.test` |
+| `FRONTEND_URL` | Base URL for password reset links in emails | — |
 
 #### UAT
 - Moderate security for testing

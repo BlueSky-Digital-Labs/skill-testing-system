@@ -113,10 +113,15 @@ frontend/
 │   │   ├── useContent.ts  # Content management hooks
 │   │   └── index.ts       # Hook exports
 │   ├── pages/             # Application pages (organized by feature)
+│   ├── pages/             # Application pages (organized by feature)
 │   │   ├── auth/          # Authentication pages
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── RegisterPage.tsx
+│   │   │   ├── SignIn.tsx
+│   │   │   ├── ForgotPassword.tsx
+│   │   │   ├── ResetPassword.tsx
 │   │   │   ├── LoginPage.css
+│   │   │   ├── AuthPages.css
 │   │   │   └── index.ts
 │   │   └── dashboard/     # Dashboard pages
 │   │       ├── DashboardPage.tsx
@@ -124,7 +129,11 @@ frontend/
 │   │       └── index.ts
 │   ├── services/          # API and external services
 │   │   ├── api.ts         # Base API configuration
-│   │   └── authService.ts # Authentication API calls
+│   │   └── authService.ts # Legacy authentication API calls
+│   ├── api/               # Fetch-based auth API client
+│   │   ├── auth.ts
+│   │   ├── authStorage.ts
+│   │   └── http.ts
 │   ├── store/             # Redux store configuration
 │   │   ├── slices/        # Redux slices
 │   │   │   └── authSlice.ts
@@ -292,13 +301,26 @@ Routes are protected using the `ProtectedRoute` component:
 ```
 
 ### API Integration
-Authentication integrates with Django backend:
+Authentication integrates with the Django backend through `src/api/auth.ts`:
 
-```typescript
-// Login endpoint: POST /api/auth/login/
-// Register endpoint: POST /api/auth/register/
-// Token refresh: POST /api/auth/token/refresh/
-```
+| Function | Endpoint | Description |
+|----------|----------|-------------|
+| `signIn(email, password)` | `POST /api/auth/token/` | Obtain JWT access and refresh tokens |
+| `refreshToken(refresh)` | `POST /api/auth/token/refresh/` | Refresh an access token |
+| `forgotPassword(email)` | `POST /api/auth/password/forgot/` | Request a password reset email |
+| `resetPassword(token, newPassword)` | `POST /api/auth/password/reset/` | Confirm password reset |
+
+Tokens are stored in `localStorage` via `src/api/authStorage.ts`. Optional `src/api/http.ts` retries authorized requests once after a `401` by refreshing the access token.
+
+### Auth Routes
+
+| Route | Page |
+|-------|------|
+| `/auth/sign-in` | Email/password sign-in |
+| `/auth/forgot` | Forgot password request |
+| `/auth/reset?token=...` | Reset password with token |
+
+Legacy Redux login/register pages remain at `/login` and `/register`.
 
 ## 🛠 Development Tools
 
@@ -310,6 +332,7 @@ bun run dev          # Start development server
 bun run build        # Build for production
 bun run preview      # Preview production build
 bun run lint         # Run ESLint
+bun run test         # Run Vitest smoke tests
 
 # Docker Commands (via Makefile)
 make dev            # Start development environment
@@ -328,16 +351,33 @@ make install        # Install dependencies in container
 
 ### Environment Configuration
 
+`VITE_API_BASE_URL` must be set for local development when the API is not served from the same origin as the Vite dev server. Copy `env.example` to `.env` before starting the app:
+
+```bash
+cp env.example .env
+```
+
 #### Development (.env)
 ```env
+# Backend API origin used by fetch-based auth client (without trailing slash)
 VITE_API_BASE_URL=http://localhost:8000
 VITE_APP_NAME=Horizon Digital
 ```
+
+When `VITE_API_BASE_URL` is unset, the frontend uses relative `/api/...` requests. In local Vite development, the proxy in `vite.config.ts` forwards `/api` to the backend.
 
 #### Docker Environment
 - **Development**: `compose.dev.yml`
 - **Production**: `compose.prod.yml`
 - **UAT**: `compose.uat.yml`
+
+### Manual verification (auth pages)
+
+1. Copy `frontend/env.example` to `frontend/.env` and set `VITE_API_BASE_URL=http://localhost:8000`.
+2. Start the backend API and run `npm run dev` in `frontend/`.
+3. Visit `/auth/sign-in`, sign in with a valid user, and confirm redirect to `/dashboard`.
+4. Visit `/auth/forgot`, submit an email, and confirm the generic success message appears.
+5. Open `/auth/reset?token=<valid-token>` and reset the password; confirm the success message and sign-in link.
 
 ## 🐳 Docker Configuration
 

@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { RootState } from '@store/index'
-import { LoginPage, RegisterPage } from '@pages/auth'
+import { LoginPage, RegisterPage, SignIn, ForgotPassword, ResetPassword } from '@pages/auth'
 import { DashboardPage } from '@pages/dashboard'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 
@@ -14,6 +14,11 @@ function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
+      {/* New auth flow */}
+      <Route path="/auth/sign-in" element={<SignIn />} />
+      <Route path="/auth/forgot" element={<ForgotPassword />} />
+      <Route path="/auth/reset" element={<ResetPassword />} />
       
       {/* Dashboard routes (has its own layout) */}
       <Route
