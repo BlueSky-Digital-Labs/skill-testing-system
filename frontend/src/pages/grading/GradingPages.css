@@ -1,0 +1,30 @@
+.grading-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.grading-page__header h1 {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--hd-text-primary);
+}
+
+.grading-page__header p {
+  margin: 0;
+  color: var(--hd-text-secondary);
+}
+
+.grading-filters__actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.grading-pagination__buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.grading-detail-layout__aside {
+  display: grid;
+  gap: 1.5rem;
+}
