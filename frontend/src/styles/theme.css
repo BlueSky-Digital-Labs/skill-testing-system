@@ -1,12 +1,16 @@
 /* Horizon Digital Theme Variables - Based on Design */
 :root {
+  /* Brand theme (overridden at runtime by ThemeProvider) */
+  --brand-primary: #0A5FFF;
+  --brand-secondary: #111827;
+
   /* Primary Colors - Dark Navy from Design */
-  --hd-primary: #1a2332; /* Dark navy from sidebar */
+  --hd-primary: var(--brand-secondary);
   --hd-primary-light: #2d3748;
   --hd-primary-dark: #0f1419;
   
   /* Secondary Colors - Purple Accent */
-  --hd-secondary: #8b5cf6; /* Purple accent color */
+  --hd-secondary: var(--brand-primary);
   --hd-secondary-light: #a78bfa;
   --hd-secondary-dark: #7c3aed;
   
@@ -23,9 +27,9 @@
   --hd-gray-900: #0f172a;
   
   /* Design Specific Colors */
-  --hd-sidebar-bg: #1a2332;
+  --hd-sidebar-bg: var(--brand-secondary);
   --hd-sidebar-text: #e2e8f0;
-  --hd-sidebar-active: #8b5cf6;
+  --hd-sidebar-active: var(--brand-primary);
   --hd-main-bg: #ffffff;
   --hd-table-header: #f8fafc;
   

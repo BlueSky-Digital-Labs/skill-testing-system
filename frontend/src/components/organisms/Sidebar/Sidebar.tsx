@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
+import { useAdminAccess } from '@hooks/useAdminAccess'
 import { useSidebarContent } from '@hooks/useContent'
 import { Logo } from '@components/atoms/Logo'
 import { 
@@ -9,7 +10,8 @@ import {
   Users, 
   BarChart3, 
   Settings, 
-  LogOut 
+  LogOut,
+  Palette,
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -18,6 +20,7 @@ import './Sidebar.css'
 export const Sidebar = () => {
   const location = useLocation()
   const { logout } = useAuth()
+  const { isAdmin } = useAdminAccess()
   const sidebarContent = useSidebarContent()
 
   const menuItems = [
@@ -56,7 +59,14 @@ export const Sidebar = () => {
       icon: Settings,
       label: sidebarContent.menuItems.settings,
       path: '/settings'
-    }
+    },
+    ...(isAdmin
+      ? [{
+          icon: Palette,
+          label: sidebarContent.menuItems.branding,
+          path: '/admin/branding',
+        }]
+      : []),
   ]
 
   const handleLogout = () => {

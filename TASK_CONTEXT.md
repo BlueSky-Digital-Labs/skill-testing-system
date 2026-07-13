@@ -2,44 +2,74 @@
 
 ## Scope
 
-Add organization-level branding settings to the Django backend, including:
-- Logo upload with media file support
-- Theme color management (primary/secondary hex colors)
-- Email header/footer HTML content with sanitization
-- Admin-only REST API endpoints for reading and updating settings
-- Django admin registration for inspection
+### Backend (completed)
+- Organization-level branding settings API (`branding` Django app)
+- Logo upload, theme colors, email header/footer HTML with server-side sanitization
+- Admin-only REST endpoints at `/api/admin/settings` and `/api/admin/settings/update`
+
+### Frontend (this iteration)
+- Admin Branding configuration page at `/admin/branding`
+- API client for branding settings (`getBranding`, `updateBranding`)
+- App-wide theming via `ThemeContext` and CSS variables (`--brand-primary`, `--brand-secondary`)
+- Admin route protection and sidebar navigation link
+- Client-side HTML preview sanitization and logo upload validation
 
 ## Key Implementation Decisions
 
-1. **Singleton model pattern**: `OrganizationSettings.load()` returns the first row or creates defaults — suitable for single-tenant org branding.
-2. **Admin access control**: Endpoints use DRF `IsAdminUser` (requires `is_staff=True`) with JWT authentication.
-3. **URL layout**: Branding routes at `/api/admin/settings` and `/api/admin/settings/update`, included from `branding.urls` at project root.
-4. **Media files**: `MEDIA_ROOT = BASE_DIR / 'media'`, `MEDIA_URL = '/media/'`; served via Django in development when `DEBUG=True`.
-5. **HTML sanitization**: `bleach` with an allowlist of tags/attributes; `<script>` and `<style>` blocks stripped before cleaning.
-6. **Color validation**: Reusable `validate_hex_color()` enforces `#RRGGBB` format.
-7. **Dependencies added**: `Pillow` (ImageField), `bleach` (HTML sanitization).
+### Backend
+1. **Singleton model**: `OrganizationSettings.load()` returns or creates the single settings row.
+2. **Admin access**: DRF `IsAdminUser` (requires `is_staff=True`) with JWT authentication.
+3. **Update endpoint**: `POST /api/admin/settings/update` (also accepts PUT/PATCH).
+4. **HTML sanitization**: `bleach` with allowlisted tags; script/style blocks stripped.
+
+### Frontend
+1. **API client location**: `frontend/src/api/branding.ts` using `authorizedFetch` with existing JWT auth.
+2. **Update endpoint**: Uses `POST /api/admin/settings/update` to match backend (multipart when logo included).
+3. **Admin access check**: `AdminRoute` and `useAdminAccess` verify staff by calling `getBranding()`; 403 redirects to `/dashboard?access=denied`.
+4. **Theme bootstrap**: `ThemeProvider` applies cached branding from `localStorage` immediately, then refreshes from API when authenticated.
+5. **CSS variables**: `--brand-primary` / `--brand-secondary` mapped to existing `--hd-*` shell variables.
+6. **Preview sanitization**: Client-side `sanitizeHtmlForPreview()` strips scripts, event handlers, and `javascript:` URLs before `dangerouslySetInnerHTML`.
+7. **Logo validation**: Max 2MB, image MIME types only; preview via `URL.createObjectURL`.
 
 ## Files Changed
 
+### Backend
 | File | Why |
 |------|-----|
-| `backend/src/branding/` (new app) | Model, views, serializers, URLs, admin, tests |
-| `backend/src/branding/migrations/0001_initial.py` | Initial migration for `OrganizationSettings` |
-| `backend/src/core/settings/base.py` | `BrandingConfig` in `INSTALLED_APPS`, `MEDIA_ROOT`/`MEDIA_URL`, OpenAPI tag |
-| `backend/src/core/settings/test.py` | Test media root for file upload tests |
-| `backend/src/core/urls.py` | Include branding URLs; serve media in DEBUG |
-| `backend/requirements.txt` | Add Pillow and bleach |
-| `backend/README.md` | Document endpoints, media paths, curl examples |
+| `backend/src/branding/` | Model, views, serializers, URLs, admin, tests |
+| `backend/src/core/settings/base.py` | `BrandingConfig`, `MEDIA_ROOT`/`MEDIA_URL` |
+| `backend/src/core/urls.py` | Include branding URLs; dev media serving |
+| `backend/requirements.txt` | Pillow, bleach |
+| `backend/README.md` | Endpoint and media documentation |
+
+### Frontend
+| File | Why |
+|------|-----|
+| `frontend/src/pages/admin/branding/` | BrandingPage UI with logo, colors, email HTML editors |
+| `frontend/src/api/branding.ts` | `getBranding`, `updateBranding`, validation helpers |
+| `frontend/src/api/branding.test.ts` | API client and validation tests |
+| `frontend/src/theme/ThemeContext.tsx` | App-wide theme provider |
+| `frontend/src/theme/brandCss.ts` | CSS variable application helper |
+| `frontend/src/utils/sanitizeHtml.ts` | Client-side HTML preview sanitization |
+| `frontend/src/components/organisms/AdminRoute/` | Staff-only route guard |
+| `frontend/src/hooks/useAdminAccess.ts` | Sidebar admin visibility hook |
+| `frontend/src/App.tsx` | `/admin/branding` route |
+| `frontend/src/main.tsx` | Wrap app in `ThemeProvider` |
+| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Branding nav link for admins |
+| `frontend/src/styles/theme.css` | Brand CSS variable defaults |
+| `frontend/src/pages/auth/AuthPages.css` | Use brand variables on sign-in flow |
+| `frontend/src/pages/dashboard/DashboardPage.tsx` | Access denied banner |
 
 ## API Endpoints
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/admin/settings` | GET | JWT (staff) | Get current organization settings |
-| `/api/admin/settings/update` | POST/PUT/PATCH | JWT (staff) | Update settings (JSON or multipart) |
+| `/api/admin/settings` | GET | JWT (staff) | Get organization branding settings |
+| `/api/admin/settings/update` | POST | JWT (staff) | Update settings (JSON or multipart) |
 
 ## Verification
 
+### Backend
 ```bash
 cd backend
 pip install -r requirements.txt
@@ -47,14 +77,25 @@ PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret 
   python3 manage.py test branding authentication
 ```
 
+### Frontend
+```bash
+cd frontend
+npm install
+npm run test
+npm run lint
+npm run build
+```
+
 ## Open Questions / Follow-ups
 
-- Production media serving requires reverse-proxy or object-storage configuration (not handled by Django when `DEBUG=False`).
-- Only a single `OrganizationSettings` row is enforced by convention, not a database constraint.
-- Non-staff admin UI users (`is_superuser` without `is_staff`) cannot access the API — align with `IsAdminUser` semantics.
+- Backend profile API does not expose `is_staff`; admin access is verified via branding API call.
+- Public read endpoint for branding would allow unauthenticated theme bootstrap without cache.
+- Production media serving requires reverse-proxy or object-storage configuration.
+- Legacy axios auth stack still uses separate token key from `authStorage`.
 
 ## Assumptions / Limitations
 
-- Organization branding is global (not per-tenant/multi-org).
-- Logo removal via API sends an empty/null `logo` field in multipart or JSON.
-- Inline `style` attributes are stripped from email HTML for security (class-based styling only).
+- Branding is global (single organization).
+- Non-staff users see default/cached theme colors only.
+- Inline `style` attributes are stripped server-side from saved email HTML.
+- Logo removal via API requires sending empty/null `logo` field (not yet exposed in UI).
