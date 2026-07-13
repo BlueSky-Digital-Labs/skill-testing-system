@@ -43,6 +43,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     'authentication',
+    'branding.apps.BrandingConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -105,6 +106,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media files (user uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # WhiteNoise configuration
 # Use CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
@@ -174,6 +179,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Authentication', 'description': 'User authentication and JWT token management'},
         {'name': 'Users', 'description': 'User management operations'},
         {'name': 'Health', 'description': 'Application health checks'},
+        {'name': 'Branding', 'description': 'Organization branding and email content settings'},
     ],
 }
 

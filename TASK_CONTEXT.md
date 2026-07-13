@@ -1,80 +1,60 @@
-# Task Context: JWT Auth & Password Reset (feat-97a2d06b)
+# Task Context: Organization Branding Settings (feat-6210f644)
 
 ## Scope
 
-### Backend (completed)
-- Email-based JWT token obtain and refresh
-- Password reset request and confirm endpoints
-- `PasswordResetToken` model with expiry and single-use semantics
-- Email settings driven by environment variables
-
-### Frontend (this iteration)
-- Fetch-based auth API client (`signIn`, `refreshToken`, `forgotPassword`, `resetPassword`)
-- Sign-in, forgot password, and reset password pages
-- Routing at `/auth/sign-in`, `/auth/forgot`, `/auth/reset`
-- Token storage helpers and optional 401 refresh retry helper
-- Vitest smoke tests for the API client
+Add organization-level branding settings to the Django backend, including:
+- Logo upload with media file support
+- Theme color management (primary/secondary hex colors)
+- Email header/footer HTML content with sanitization
+- Admin-only REST API endpoints for reading and updating settings
+- Django admin registration for inspection
 
 ## Key Implementation Decisions
 
-### Backend
-1. **Settings location**: `backend/src/core/settings/base.py` with `django-environ`.
-2. **Email authentication**: `authentication.backends.EmailBackend` for `authenticate(email=..., password=...)`.
-3. **URL layout**: Auth mounted at `api/`; endpoints live under `/api/auth/...`.
-4. **Enumeration safety**: Forgot-password endpoint always returns HTTP 200.
-
-### Frontend
-1. **API client location**: New `frontend/src/api/` module using `fetch` per ticket spec (legacy axios service kept for register/login pages).
-2. **API base URL**: `getApiBase()` resolves to `${VITE_API_BASE_URL}/api` or `/api` when unset (Vite proxy / same-origin deploy).
-3. **Token storage**: `authStorage.ts` stores `access_token` and `refresh_token`, and mirrors access token to legacy `token` key for existing interceptors.
-4. **Redux integration**: `setSession` reducer updates auth state after successful sign-in without replacing legacy login flow.
-5. **UX/accessibility**: Accessible labels on all fields, keyboard-navigable controls, `aria-live` regions for errors and success messages.
-6. **Tests**: Added Vitest because the frontend previously had no test runner; smoke tests mock `fetch` for request/response handling.
+1. **Singleton model pattern**: `OrganizationSettings.load()` returns the first row or creates defaults — suitable for single-tenant org branding.
+2. **Admin access control**: Endpoints use DRF `IsAdminUser` (requires `is_staff=True`) with JWT authentication.
+3. **URL layout**: Branding routes at `/api/admin/settings` and `/api/admin/settings/update`, included from `branding.urls` at project root.
+4. **Media files**: `MEDIA_ROOT = BASE_DIR / 'media'`, `MEDIA_URL = '/media/'`; served via Django in development when `DEBUG=True`.
+5. **HTML sanitization**: `bleach` with an allowlist of tags/attributes; `<script>` and `<style>` blocks stripped before cleaning.
+6. **Color validation**: Reusable `validate_hex_color()` enforces `#RRGGBB` format.
+7. **Dependencies added**: `Pillow` (ImageField), `bleach` (HTML sanitization).
 
 ## Files Changed
 
-### Backend
 | File | Why |
 |------|-----|
-| `backend/requirements.txt` | Pin DRF 3.15.* and simplejwt 5.3.* |
-| `backend/src/core/settings/base.py` | JWT lifetimes, email settings, auth backends |
-| `backend/src/authentication/*` | Model, serializers, views, URLs, tests |
-| `backend/README.md` | Endpoint documentation |
+| `backend/src/branding/` (new app) | Model, views, serializers, URLs, admin, tests |
+| `backend/src/branding/migrations/0001_initial.py` | Initial migration for `OrganizationSettings` |
+| `backend/src/core/settings/base.py` | `BrandingConfig` in `INSTALLED_APPS`, `MEDIA_ROOT`/`MEDIA_URL`, OpenAPI tag |
+| `backend/src/core/settings/test.py` | Test media root for file upload tests |
+| `backend/src/core/urls.py` | Include branding URLs; serve media in DEBUG |
+| `backend/requirements.txt` | Add Pillow and bleach |
+| `backend/README.md` | Document endpoints, media paths, curl examples |
 
-### Frontend
-| File | Why |
-|------|-----|
-| `frontend/src/api/auth.ts` | Fetch-based auth API functions |
-| `frontend/src/api/authStorage.ts` | localStorage token helpers |
-| `frontend/src/api/http.ts` | Optional 401 refresh retry |
-| `frontend/src/api/auth.test.ts` | Vitest smoke tests |
-| `frontend/src/pages/auth/SignIn.tsx` | Sign-in page |
-| `frontend/src/pages/auth/ForgotPassword.tsx` | Forgot password page |
-| `frontend/src/pages/auth/ResetPassword.tsx` | Reset password page |
-| `frontend/src/App.tsx` | New auth routes |
-| `frontend/src/store/slices/authSlice.ts` | `setSession` + authStorage integration |
-| `frontend/vitest.config.ts` | Test runner config |
-| `frontend/package.json` | `test` script, vitest/jsdom deps |
-| `frontend/README.md` | Env vars, routes, manual verification |
+## API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/admin/settings` | GET | JWT (staff) | Get current organization settings |
+| `/api/admin/settings/update` | POST/PUT/PATCH | JWT (staff) | Update settings (JSON or multipart) |
 
 ## Verification
 
-### Backend
 ```bash
 cd backend
+pip install -r requirements.txt
 PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret \
-  python3 manage.py test authentication
-```
-
-### Frontend
-```bash
-cd frontend
-npm run test
-npm run lint
-npm run build
+  python3 manage.py test branding authentication
 ```
 
 ## Open Questions / Follow-ups
 
-- Legacy `/login` and `authService.ts` still use older endpoints; consider deprecating once all flows use `/auth/sign-in`.
-- `http.ts` is available but not yet wired into the axios `apiService` interceptor.
+- Production media serving requires reverse-proxy or object-storage configuration (not handled by Django when `DEBUG=False`).
+- Only a single `OrganizationSettings` row is enforced by convention, not a database constraint.
+- Non-staff admin UI users (`is_superuser` without `is_staff`) cannot access the API — align with `IsAdminUser` semantics.
+
+## Assumptions / Limitations
+
+- Organization branding is global (not per-tenant/multi-org).
+- Logo removal via API sends an empty/null `logo` field in multipart or JSON.
+- Inline `style` attributes are stripped from email HTML for security (class-based styling only).
