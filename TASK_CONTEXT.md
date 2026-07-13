@@ -2,59 +2,79 @@
 
 ## Scope
 
-Implement JWT authentication endpoints and a password reset flow for the Django backend:
-
+### Backend (completed)
 - Email-based JWT token obtain and refresh
 - Password reset request and confirm endpoints
 - `PasswordResetToken` model with expiry and single-use semantics
 - Email settings driven by environment variables
-- Tests and documentation for the new API surface
+
+### Frontend (this iteration)
+- Fetch-based auth API client (`signIn`, `refreshToken`, `forgotPassword`, `resetPassword`)
+- Sign-in, forgot password, and reset password pages
+- Routing at `/auth/sign-in`, `/auth/forgot`, `/auth/reset`
+- Token storage helpers and optional 401 refresh retry helper
+- Vitest smoke tests for the API client
 
 ## Key Implementation Decisions
 
-1. **Settings location**: The project uses `backend/src/core/settings/base.py` (not a flat `settings.py`). REST framework JWT auth, `SIMPLE_JWT` lifetimes (15-minute access / 7-day refresh), and email settings were added there using the existing `django-environ` pattern.
+### Backend
+1. **Settings location**: `backend/src/core/settings/base.py` with `django-environ`.
+2. **Email authentication**: `authentication.backends.EmailBackend` for `authenticate(email=..., password=...)`.
+3. **URL layout**: Auth mounted at `api/`; endpoints live under `/api/auth/...`.
+4. **Enumeration safety**: Forgot-password endpoint always returns HTTP 200.
 
-2. **Email authentication**: Added `authentication.backends.EmailBackend` so `authenticate(email=..., password=...)` works for the new `TokenObtainSerializer`.
-
-3. **URL layout**: Core URLs now mount authentication at `api/` per the ticket. Legacy routes remain under `/api/auth/...` (register, login, jwt/*, users) alongside the new `/api/auth/token/`, `/api/auth/password/forgot/`, and `/api/auth/password/reset/` endpoints.
-
-4. **Password reset expiry**: `PasswordResetToken.expires_at` uses a named callable (`default_password_reset_expires_at`) instead of an inline lambda so migrations remain serializable.
-
-5. **Enumeration safety**: `PasswordResetRequestView` always returns HTTP 200 whether or not the email exists.
-
-6. **Test settings**: Added `core/settings/test.py` with in-memory SQLite for running the suite without Docker/PostgreSQL.
+### Frontend
+1. **API client location**: New `frontend/src/api/` module using `fetch` per ticket spec (legacy axios service kept for register/login pages).
+2. **API base URL**: `getApiBase()` resolves to `${VITE_API_BASE_URL}/api` or `/api` when unset (Vite proxy / same-origin deploy).
+3. **Token storage**: `authStorage.ts` stores `access_token` and `refresh_token`, and mirrors access token to legacy `token` key for existing interceptors.
+4. **Redux integration**: `setSession` reducer updates auth state after successful sign-in without replacing legacy login flow.
+5. **UX/accessibility**: Accessible labels on all fields, keyboard-navigable controls, `aria-live` regions for errors and success messages.
+6. **Tests**: Added Vitest because the frontend previously had no test runner; smoke tests mock `fetch` for request/response handling.
 
 ## Files Changed
 
+### Backend
 | File | Why |
 |------|-----|
 | `backend/requirements.txt` | Pin DRF 3.15.* and simplejwt 5.3.* |
-| `backend/src/core/settings/base.py` | JWT lifetimes, email settings, `AUTHENTICATION_BACKENDS` |
-| `backend/src/core/settings/test.py` | In-memory SQLite test configuration |
-| `backend/src/core/urls.py` | Mount auth URLs at `api/` |
-| `backend/src/authentication/models.py` | `PasswordResetToken` model |
-| `backend/src/authentication/migrations/0002_passwordresettoken.py` | DB migration |
-| `backend/src/authentication/backends.py` | Email-based auth backend |
-| `backend/src/authentication/password_reset.py` | Token creation and email helper |
-| `backend/src/authentication/serializers.py` | Token obtain and password reset serializers |
-| `backend/src/authentication/views.py` | New auth and password reset views |
-| `backend/src/authentication/urls.py` | Route registration |
-| `backend/src/authentication/tests/test_auth.py` | View integration tests |
-| `backend/env.example` | Document new env vars |
-| `backend/README.md` | Endpoint and env var documentation |
-| `README.md` | Monorepo-level auth endpoint summary |
+| `backend/src/core/settings/base.py` | JWT lifetimes, email settings, auth backends |
+| `backend/src/authentication/*` | Model, serializers, views, URLs, tests |
+| `backend/README.md` | Endpoint documentation |
+
+### Frontend
+| File | Why |
+|------|-----|
+| `frontend/src/api/auth.ts` | Fetch-based auth API functions |
+| `frontend/src/api/authStorage.ts` | localStorage token helpers |
+| `frontend/src/api/http.ts` | Optional 401 refresh retry |
+| `frontend/src/api/auth.test.ts` | Vitest smoke tests |
+| `frontend/src/pages/auth/SignIn.tsx` | Sign-in page |
+| `frontend/src/pages/auth/ForgotPassword.tsx` | Forgot password page |
+| `frontend/src/pages/auth/ResetPassword.tsx` | Reset password page |
+| `frontend/src/App.tsx` | New auth routes |
+| `frontend/src/store/slices/authSlice.ts` | `setSession` + authStorage integration |
+| `frontend/vitest.config.ts` | Test runner config |
+| `frontend/package.json` | `test` script, vitest/jsdom deps |
+| `frontend/README.md` | Env vars, routes, manual verification |
 
 ## Verification
 
+### Backend
 ```bash
 cd backend
 PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret \
   python3 manage.py test authentication
 ```
 
-All 14 authentication tests pass (5 model + 9 view tests).
+### Frontend
+```bash
+cd frontend
+npm run test
+npm run lint
+npm run build
+```
 
 ## Open Questions / Follow-ups
 
-- Frontend `authService.ts` still points at legacy login/refresh paths; consider aligning with `/api/auth/token/` and `/api/auth/token/refresh/` in a follow-up.
-- Production SMTP credentials are not configured in this ticket; only env var hooks and console backend defaults are provided.
+- Legacy `/login` and `authService.ts` still use older endpoints; consider deprecating once all flows use `/auth/sign-in`.
+- `http.ts` is available but not yet wired into the axios `apiService` interceptor.

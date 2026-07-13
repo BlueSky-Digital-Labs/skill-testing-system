@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { AuthState, LoginCredentials, RegisterCredentials, User, AuthResponse } from '@/types/auth'
 import { authService } from '@/services/authService'
+import { getAccessToken } from '@/api/authStorage'
 
 interface ApiError {
   response?: {
@@ -12,10 +13,12 @@ interface ApiError {
   message?: string
 }
 
+const initialToken = getAccessToken()
+
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  token: initialToken,
+  isAuthenticated: !!initialToken,
   isLoading: false,
   error: null,
 }
@@ -87,6 +90,11 @@ const authSlice = createSlice({
       state.user = action.payload
       state.isAuthenticated = true
     },
+    setSession: (state, action: PayloadAction<{ access: string }>) => {
+      state.token = action.payload.access
+      state.isAuthenticated = true
+      state.error = null
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -142,5 +150,5 @@ const authSlice = createSlice({
   },
 })
 
-export const { logout, clearError, setUser } = authSlice.actions
+export const { logout, clearError, setUser, setSession } = authSlice.actions
 export default authSlice.reducer
