@@ -9,9 +9,14 @@ import { AuditPage } from '@pages/admin/audit'
 import { UsersPage, RolesPage } from '@pages/admin'
 import { GradingList, GradingDetail } from '@pages/grading'
 import { TestAssignPage } from '@pages/tests/assign'
+import { GroupsList, GroupDetail } from '@pages/coordinator'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
 import { SystemAdminRoute } from '@components/organisms/SystemAdminRoute'
+import { withCoordinatorGuard } from '@/auth/guards'
+
+const CoordinatorGroupsList = withCoordinatorGuard(GroupsList)
+const CoordinatorGroupDetail = withCoordinatorGuard(GroupDetail)
 
 function App() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
@@ -102,6 +107,9 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route path="/coordinator/groups" element={<CoordinatorGroupsList />} />
+      <Route path="/coordinator/groups/:id" element={<CoordinatorGroupDetail />} />
     </Routes>
   )
 }

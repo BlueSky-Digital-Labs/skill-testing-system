@@ -1,4 +1,5 @@
 export { useAuth } from './useAuth'
 export { useContent, useAuthContent, useDashboardContent, useSidebarContent, useHeaderContent, useCommonContent, useAppContent } from './useContent'
 export { useAdminAccess } from './useAdminAccess'
+export { useCoordinatorAccess } from './useCoordinatorAccess'
 export { useSystemAdminAccess } from './useSystemAdminAccess'

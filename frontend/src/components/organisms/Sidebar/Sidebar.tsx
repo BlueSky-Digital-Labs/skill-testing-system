@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { useAdminAccess } from '@hooks/useAdminAccess'
+import { useCoordinatorAccess } from '@hooks/useCoordinatorAccess'
 import { useSystemAdminAccess } from '@hooks/useSystemAdminAccess'
 import { useSidebarContent } from '@hooks/useContent'
 import { Logo } from '@components/atoms/Logo'
@@ -17,6 +18,7 @@ import {
   ScrollText,
   Shield,
   UserCog,
+  UsersRound,
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -26,6 +28,7 @@ export const Sidebar = () => {
   const location = useLocation()
   const { logout } = useAuth()
   const { isAdmin } = useAdminAccess()
+  const { isCoordinator } = useCoordinatorAccess()
   const { isSystemAdmin } = useSystemAdminAccess()
   const sidebarContent = useSidebarContent()
 
@@ -66,6 +69,15 @@ export const Sidebar = () => {
       label: sidebarContent.menuItems.settings,
       path: '/settings'
     },
+    ...(isCoordinator
+      ? [
+          {
+            icon: UsersRound,
+            label: 'Candidate groups',
+            path: '/coordinator/groups',
+          },
+        ]
+      : []),
     ...(isAdmin
       ? [
           {
