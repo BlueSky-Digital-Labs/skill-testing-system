@@ -1,67 +1,63 @@
-# Task Context: Full-Stack Feature Integration (Task #41)
+# Task Context: Candidate Test Runner (Frontend)
 
-**Branch:** `sunset/task/41-3385d121`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/20
+**Branch:** `sunset/task/feat-f69d79e6`  
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/21
 
 ## Scope
 
-Integrate implemented frontend features into the skill-testing-system monorepo so the React UI and Django backend work cohesively end-to-end. Replace starter-template boilerplate, wire navigation and routes to real feature pages, connect UI to existing API services, and ensure demo seed data supports integrated flows.
+Implement the frontend candidate test runner with server-synchronized timer, debounced autosave with retry, resume support, and integrity-aware navigation. Consumes the delivery attempt APIs (`start`, `save`, `resume`, `submit`).
 
 ### In scope
 
-- Replace demo dashboard (hardcoded jobs/workers data) with role-aware summary cards backed by existing APIs
-- Remove dead sidebar links (`/jobs`, `/calendar`, etc.) and expose skill-testing features (question bank, assignments, groups, grading, admin)
-- Add `/assignments` coordinator route listing test assignments with links to test detail and assign flows
-- Wire `TestDetailPage` to `listAssignments` using route `testId`
-- Extend `seed_demo` with RBAC roles, sample questions, a candidate group, and a demo assignment
-- Frontend/backend tests for new integration surfaces
+- Attempt API client (`frontend/src/api/attempts.ts`)
+- Runner pages: `/attempts/:attemptId` and `/tests/:id/start`
+- Runner components (`RunnerHeader`, `RunnerQuestion`, `RunnerNavigator`, `RunnerFooter`)
+- Hooks for timer sync, autosave, and attempt orchestration
+- Vitest/RTL tests for API client, timer, question rendering, and runner page flows
 
 ### Out of scope / deferred
 
-- Test composition API (no `Test` model yet; question list on test detail remains informational)
-- Consolidating dual auth stacks (`LoginPage` axios vs `SignIn` fetch)
-- Mounting orphaned `Layout` / `Header` / `RegisterPage` components
-- `GroupPicker` adoption in assign form (still uses plain ID fields)
+- Candidate assignment discovery UI (start page requires `?assignmentId=` query param)
+- Embedding question stems in attempt API payload (runner fetches question details via question-bank `getQuestion`)
+- Full-screen kiosk / proctoring integrations
 
 ## Key Implementation Decisions
 
-1. **Dashboard aggregates existing APIs** — `useDashboardStats` fetches counts from `listQuestions`, `listAssignments`, `listGroupsPaginated`, and `listQueue` based on role probes (`useExaminerAccess`, `useCoordinatorAccess`, `useAdminAccess`). No new backend summary endpoint.
-2. **Assignments hub at `/assignments`** — Coordinator-guarded list page reuses `pages/tests/assign/api.ts` and links to `/tests/:testId` and `/tests/:testId/assign`.
-3. **Test detail shows assignments, not composition** — Backend stores `test_id` as an opaque UUID without question membership; the page loads assignments for the route id and keeps question rendering for tests/props only.
-4. **Seed data uses stable demo test UUID** — `11111111-1111-4111-8111-111111111111` for repeatable assignment links in docs and UI demos.
-5. **Sidebar active-state helper** — `isPathActive` covers nested routes (e.g. `/questions/import` highlights Question bank).
+1. **API client at `src/api/attempts.ts`** — Uses `authorizedFetch` + `parseResponse` consistent with newer frontend modules. `startAttempt` accepts `assignmentId` because the backend start endpoint keys off assignment, not test id.
+2. **Question content hydration** — Attempt payloads provide order + saved answers only; runner loads question text/options via `getQuestion` and applies server `option_id_orders` while stripping `is_correct` from rendered options.
+3. **Server-authoritative timer** — Local countdown initialized from `remaining_time_seconds`, decremented every second, and re-synced every 45s via `resumeAttempt`. Expiry only fires when server remaining time is also zero to avoid race on initial load.
+4. **Autosave** — 1.5s debounce, exponential backoff (3 retries), localStorage draft cache purged on successful save. `question_version` taken from saved attempt state or question `latest_version_number`.
+5. **Integrity defaults** — `question_per_page: true`, `disable_review: false` until assignment/test metadata exposes these flags from the backend.
+6. **Start handoff** — `/tests/:id/start?assignmentId=...` validates test/assignment match, calls start API, redirects to `/attempts/:attemptId`.
 
 ## Files Changed
 
 | File | Why |
 |------|-----|
-| `frontend/src/App.tsx` | Register `/assignments` route with coordinator guard |
-| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Skill-testing navigation; remove template dead links |
-| `frontend/src/content/index.ts` | Dashboard/sidebar copy for assessment domain |
-| `frontend/src/pages/dashboard/DashboardPage.tsx` | Role-aware dashboard with live API stats |
-| `frontend/src/pages/dashboard/DashboardPage.css` | Quick links + recent assignments styling |
-| `frontend/src/pages/dashboard/useDashboardStats.ts` | Dashboard data hook |
-| `frontend/src/pages/dashboard/DashboardPage.test.tsx` | Dashboard integration test |
-| `frontend/src/pages/tests/AssignmentsListPage.tsx` | Coordinator assignments index |
-| `frontend/src/pages/tests/AssignmentsListPage.test.tsx` | Assignments list test |
-| `frontend/src/pages/tests/TestDetailPage.tsx` | Wire to `listAssignments` via route param |
-| `frontend/src/pages/tests/TestDetailPage.test.tsx` | Updated tests for API wiring |
-| `frontend/src/pages/tests/tests.css` | Layout styles for test/assignment pages |
-| `backend/src/authentication/management/commands/seed_demo.py` | Roles, questions, group, assignment seed data |
-| `backend/src/authentication/tests/test_seed_demo.py` | Seed command regression test |
+| `frontend/src/api/attempts.ts` | Delivery attempt API client + types |
+| `frontend/src/api/attempts.test.ts` | API client unit tests |
+| `frontend/src/pages/attempts/[attemptId].tsx` | In-progress attempt runner page |
+| `frontend/src/pages/tests/[id]/start.tsx` | Start handoff page |
+| `frontend/src/components/runner/*` | Runner UI components, hooks, styles |
+| `frontend/src/App.tsx` | Register runner and start routes |
+| `frontend/src/pages/attempts/__tests__/AttemptRunner.test.tsx` | Runner integration tests |
+
+## Routes
+
+| Path | Purpose |
+|------|---------|
+| `/tests/:id/start?assignmentId=` | Start attempt and redirect |
+| `/attempts/:attemptId` | Resume/run attempt |
+| `/attempts/:attemptId/complete` | Existing completion page (post-submit) |
 
 ## Verification
 
 ```bash
-# Frontend
-cd frontend && npm ci && npm test && npm run lint && npm run build
-
-# Backend
-cd backend && SECRET_KEY=test-secret-key python3 -m pytest -q
+cd frontend && npm test && npm run lint && npm run build
 ```
 
 ## Open Questions / Follow-ups
 
-- Add a dedicated tests index API when the `Test` model lands so test detail can show composition
-- Link grading/results/attempt routes from assignment rows once attempt ids are surfaced in assignment APIs
-- Consider `GroupPicker` in `AssignForm` to replace manual group UUID entry
+- Add candidate-facing assignment list so start links do not require manual `assignmentId`
+- Surface integrity flags (`question_per_page`, `disable_review`) from backend assignment/test config
+- Add candidate-safe bulk question fetch to avoid N+1 `getQuestion` calls on large tests

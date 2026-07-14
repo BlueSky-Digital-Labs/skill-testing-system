@@ -71,6 +71,9 @@ urlpatterns = [
     # Assignments
     path('api/', include(assignments_router.urls)),
 
+    # Attempt delivery
+    path('api/attempts/', include('delivery.urls')),
+
     # Attempt review
     path(
         'api/attempts/<str:attempt_id>/review/',
