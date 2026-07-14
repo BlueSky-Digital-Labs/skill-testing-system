@@ -1,0 +1,128 @@
+.questions-page__filters select {
+  min-width: 160px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--hd-border-light);
+  border-radius: 8px;
+  background: var(--hd-surface-primary);
+}
+
+.questions-page__status {
+  margin: 0;
+}
+
+.questions-page__status--error {
+  color: var(--hd-danger, #b42318);
+}
+
+.questions-page__status--info {
+  color: var(--hd-text-secondary);
+}
+
+.questions-page__empty,
+.questions-page__hint {
+  margin: 0;
+  color: var(--hd-text-secondary);
+}
+
+.questions-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.questions-editor__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.questions-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--hd-text-secondary);
+}
+
+.questions-editor input,
+.questions-editor select,
+.questions-editor textarea {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--hd-border-light);
+  border-radius: 8px;
+  font: inherit;
+  color: var(--hd-text-primary);
+  background: var(--hd-surface-primary);
+}
+
+.questions-editor__full-width {
+  width: 100%;
+}
+
+.questions-editor__fieldset {
+  border: 1px solid var(--hd-border-light);
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 0;
+}
+
+.questions-editor__fieldset legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
+
+.questions-editor__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.questions-editor__option-row {
+  display: grid;
+  grid-template-columns: 80px 1fr auto auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.questions-editor__option-value {
+  min-width: 0;
+}
+
+.questions-editor__checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+  white-space: nowrap;
+}
+
+.questions-editor__field-error {
+  color: var(--hd-danger, #b42318);
+  font-size: 0.8125rem;
+}
+
+.questions-editor__image {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.questions-editor__image-preview {
+  max-width: 280px;
+  max-height: 180px;
+  border-radius: 8px;
+  border: 1px solid var(--hd-border-light);
+  object-fit: contain;
+}
+
+.questions-editor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .questions-editor__option-row {
+    grid-template-columns: 1fr;
+  }
+}

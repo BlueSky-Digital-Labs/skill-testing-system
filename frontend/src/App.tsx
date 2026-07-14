@@ -10,13 +10,16 @@ import { UsersPage, RolesPage } from '@pages/admin'
 import { GradingList, GradingDetail } from '@pages/grading'
 import { TestAssignPage } from '@pages/tests/assign'
 import { GroupsList, GroupDetail } from '@pages/coordinator'
+import { QuestionsList, QuestionEditor } from '@pages/questions'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
 import { SystemAdminRoute } from '@components/organisms/SystemAdminRoute'
-import { withCoordinatorGuard } from '@/auth/guards'
+import { withCoordinatorGuard, withExaminerGuard } from '@/auth/guards'
 
 const CoordinatorGroupsList = withCoordinatorGuard(GroupsList)
 const CoordinatorGroupDetail = withCoordinatorGuard(GroupDetail)
+const ExaminerQuestionsList = withExaminerGuard(QuestionsList)
+const ExaminerQuestionEditor = withExaminerGuard(QuestionEditor)
 
 function App() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
@@ -110,6 +113,10 @@ function App() {
 
       <Route path="/coordinator/groups" element={<CoordinatorGroupsList />} />
       <Route path="/coordinator/groups/:id" element={<CoordinatorGroupDetail />} />
+
+      <Route path="/questions" element={<ExaminerQuestionsList />} />
+      <Route path="/questions/new" element={<ExaminerQuestionEditor />} />
+      <Route path="/questions/:id/edit" element={<ExaminerQuestionEditor />} />
     </Routes>
   )
 }

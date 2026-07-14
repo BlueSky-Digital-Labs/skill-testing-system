@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { useAdminAccess } from '@hooks/useAdminAccess'
 import { useCoordinatorAccess } from '@hooks/useCoordinatorAccess'
+import { useExaminerAccess } from '@hooks/useExaminerAccess'
 import { useSystemAdminAccess } from '@hooks/useSystemAdminAccess'
 import { useSidebarContent } from '@hooks/useContent'
 import { Logo } from '@components/atoms/Logo'
@@ -19,6 +20,7 @@ import {
   Shield,
   UserCog,
   UsersRound,
+  BookOpen,
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -29,6 +31,7 @@ export const Sidebar = () => {
   const { logout } = useAuth()
   const { isAdmin } = useAdminAccess()
   const { isCoordinator } = useCoordinatorAccess()
+  const { isExaminer } = useExaminerAccess()
   const { isSystemAdmin } = useSystemAdminAccess()
   const sidebarContent = useSidebarContent()
 
@@ -69,6 +72,15 @@ export const Sidebar = () => {
       label: sidebarContent.menuItems.settings,
       path: '/settings'
     },
+    ...(isExaminer
+      ? [
+          {
+            icon: BookOpen,
+            label: 'Question bank',
+            path: '/questions',
+          },
+        ]
+      : []),
     ...(isCoordinator
       ? [
           {
@@ -126,7 +138,9 @@ export const Sidebar = () => {
       <nav className="sidebar-nav">
         {menuItems.map((item) => {
           const Icon = item.icon
-          const isActive = location.pathname === item.path
+          const isActive =
+            location.pathname === item.path ||
+            (item.path === '/questions' && location.pathname.startsWith('/questions'))
           
           return (
             <Link
