@@ -1,7 +1,7 @@
 # Task Context: Candidate Groups (Backend)
 
 **Branch:** `sunset/task/feat-bc0e5ae2`  
-**PR:** _(to be added after creation)_
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/11
 
 ## Scope
 
