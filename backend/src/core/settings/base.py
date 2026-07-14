@@ -51,6 +51,7 @@ LOCAL_APPS = [
     'results.apps.ResultsConfig',
     'results.certificates.apps.ResultsCertificatesConfig',
     'delivery.apps.DeliveryConfig',
+    'reporting.apps.ReportingConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -198,6 +199,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Certificates', 'description': 'PDF certificate issuance and download'},
         {'name': 'Attempts', 'description': 'Exam attempt delivery, autosave, and submission'},
         {'name': 'Preview', 'description': 'Non-persistent preview sessions for examiners and authors'},
+        {'name': 'Reporting', 'description': 'Analytics reports and exports'},
     ],
 }
 
@@ -247,6 +249,13 @@ AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
 CERTIFICATE_PRESIGNED_URL_EXPIRES = env.int(
     'CERTIFICATE_PRESIGNED_URL_EXPIRES',
+    default=3600,
+)
+
+# Report export storage (S3)
+REPORTS_BUCKET = env('REPORTS_BUCKET', default='')
+REPORT_PRESIGNED_URL_EXPIRES = env.int(
+    'REPORT_PRESIGNED_URL_EXPIRES',
     default=3600,
 )
 
