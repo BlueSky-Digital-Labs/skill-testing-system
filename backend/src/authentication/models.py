@@ -16,6 +16,10 @@ def default_password_reset_expires_at():
     return timezone.now() + timedelta(hours=1)
 
 
+def default_invitation_expires_at():
+    return timezone.now() + timedelta(days=7)
+
+
 class UserManager(BaseUserManager):
     """
     Custom user manager for email-only authentication.
@@ -157,3 +161,42 @@ class PasswordResetToken(models.Model):
 
     def is_valid(self):
         return self.expires_at > timezone.now() and self.used_at is None
+
+
+class Invitation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(db_index=True)
+    token = models.CharField(max_length=128, unique=True, db_index=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='invitations_created',
+    )
+    role_key = models.CharField(max_length=50, choices=RoleKey.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=default_invitation_expires_at)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    consumed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='invitations_consumed',
+    )
+
+    class Meta:
+        db_table = 'auth_invitation'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['email'],
+                condition=models.Q(accepted_at__isnull=True),
+                name='unique_pending_invitation_per_email',
+            ),
+        ]
+
+    def is_valid(self):
+        return self.expires_at > timezone.now() and self.accepted_at is None
+
+    def __str__(self):
+        return f'Invitation for {self.email} ({self.role_key})'

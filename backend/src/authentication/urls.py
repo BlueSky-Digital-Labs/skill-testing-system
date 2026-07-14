@@ -19,6 +19,9 @@ from .views import (
     TokenRefreshView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
+    SelfRegistrationView,
+    InvitationIssueView,
+    InvitationAcceptView,
 )
 
 # Create routers for auth and admin endpoints.
@@ -45,6 +48,21 @@ urlpatterns = [
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/password/forgot/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('auth/password/reset/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path(
+        'auth/self-register/',
+        SelfRegistrationView.as_view(),
+        name='self_registration',
+    ),
+    path(
+        'auth/invitations/issue/',
+        InvitationIssueView.as_view(),
+        name='invitation_issue',
+    ),
+    path(
+        'auth/invitations/accept/',
+        InvitationAcceptView.as_view(),
+        name='invitation_accept',
+    ),
 
     # Include router URLs
     path('auth/', include(auth_router.urls)),
