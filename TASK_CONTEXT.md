@@ -1,116 +1,79 @@
-# Task Context: Candidate Onboarding (Backend + Frontend)
+# Task Context: Candidate Groups (Backend)
 
-**Branch:** `sunset/task/feat-aea99f83`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/10
+**Branch:** `sunset/task/feat-bc0e5ae2`  
+**PR:** _(to be added after creation)_
 
 ## Scope
 
-End-to-end candidate onboarding:
+Backend-only implementation of **Candidate Groups**: a coordinator/admin-managed grouping of candidate users for assignment targeting and cohort organization.
 
-### Backend
-- Public self-registration (`POST /api/auth/self-register/`) when `ALLOW_SELF_REGISTRATION` is enabled
-- Email invitations issued by system administrators or coordinators (`POST /api/auth/invitations/issue/`)
-- Invitation acceptance with user creation/update and JWT issuance (`POST /api/auth/invitations/accept/`)
+### In scope
+- `CandidateGroup` model with ManyToMany membership to `User`
+- REST API under `/api/core/groups/` (CRUD + member add/remove actions)
+- `IsCoordinatorOrAdmin` permission gating
+- Django admin registration
+- Audit logging and structured application logging for group lifecycle events
+- Pytest coverage for CRUD and membership management
 
-### Frontend
-- Candidate self-registration page at `/register`
-- Invitation acceptance page at `/accept-invite` (alias `/accept-invitation` for backend email links)
-- Shared API client, form inputs, toast notifications, and Vitest coverage
+### Out of scope
+- Frontend UI for group management
+- Wiring `Assignment.assignee_group_id` to `CandidateGroup` FK (assignments still store a bare UUID)
 
 ## Key Implementation Decisions
 
-### Backend
-1. **`Invitation` model**: Partial unique constraint on pending invites per email.
-2. **Self-registration**: Auto-assigns `CANDIDATE`; gated by `ALLOW_SELF_REGISTRATION` (default `false`).
-3. **Invitation issuance**: `IsCoordinatorOrAdmin`; coordinators limited to `CANDIDATE` role.
-4. **Re-issue behavior**: New invite invalidates prior pending invites for the same email.
-5. **Email links**: `{FRONTEND_URL}/accept-invitation?token=<token>`.
-
-### Frontend
-1. **API layer**: Centralized fetch wrapper in `frontend/src/api/client.ts` (`apiFetch`, `postJson`, `ApiError` with `fieldErrors`). `auth.ts` now delegates to `client.ts`.
-2. **Token validation**: No dedicated backend validate endpoint; `validateInviteToken` probes `POST /auth/invitations/accept/` with a weak password and treats password validation errors as a valid token.
-3. **Routes**: `/register` → `SelfRegister` (replaces legacy `RegisterPage` route). `/accept-invite` and `/accept-invitation` both map to `AcceptInvite`.
-4. **Session handoff**: On success, pages call `setTokens`, `dispatch(setSession)`, and navigate to `/dashboard` (same as `SignIn.tsx`).
-5. **UX**: Reusable `TextInput` / `PasswordInput`, `ToastProvider` for success/error feedback, `aria-live` regions and disabled submit while loading.
-6. **Self-registration disabled**: Backend returns 403; frontend surfaces the API error message via inline alert and toast.
-
-## Files Changed
-
-### Backend
-| File | Why |
-|------|-----|
-| `backend/src/authentication/models.py` | `Invitation` model |
-| `backend/src/authentication/migrations/0005_invitation.py` | Migration |
-| `backend/src/authentication/invitations.py` | Token creation and email delivery |
-| `backend/src/authentication/serializers.py` | Onboarding serializers |
-| `backend/src/authentication/views.py` | Onboarding views |
-| `backend/src/authentication/urls.py` | URL paths |
-| `backend/src/core/settings/base.py` | `ALLOW_SELF_REGISTRATION` |
-| `backend/src/core/settings/test.py` | Test overrides |
-| `backend/src/authentication/tests/test_onboarding.py` | Backend tests |
-
-### Frontend
-| File | Why |
-|------|-----|
-| `frontend/src/api/client.ts` | Fetch wrapper with JSON/error/token handling |
-| `frontend/src/api/candidates.ts` | `selfRegister`, `validateInviteToken`, `acceptInvite` |
-| `frontend/src/api/auth.ts` | Refactored to use shared client |
-| `frontend/src/components/Form/TextInput.tsx` | Reusable text input |
-| `frontend/src/components/Form/PasswordInput.tsx` | Reusable password input with toggle |
-| `frontend/src/components/Toast.tsx` | Toast notification provider/hook |
-| `frontend/src/pages/candidates/SelfRegister.tsx` | Self-registration page |
-| `frontend/src/pages/candidates/AcceptInvite.tsx` | Invitation acceptance page |
-| `frontend/src/App.tsx` | New routes |
-| `frontend/src/main.tsx` | `ToastProvider` wrapper |
-| `frontend/.env.development` | Local `VITE_API_BASE_URL` |
-| `frontend/src/api/client.test.ts` | Client error handling tests |
-| `frontend/src/api/candidates.test.ts` | Candidates API tests |
-| `frontend/src/pages/candidates/SelfRegister.test.tsx` | Page tests |
-| `frontend/src/pages/candidates/AcceptInvite.test.tsx` | Page tests |
+1. **Project layout**: The repo uses package modules (`core/models/`, `core/serializers/`, `core/permissions/`) rather than flat `models.py` / `serializers.py` files referenced in the ticket. Functionality is implemented in those packages; API routes live in `core/api_urls.py` because `core/urls.py` is the Django root URLconf.
+2. **`IsCoordinatorOrAdmin`**: Centralized in `core/permissions/__init__.py` and re-exported from `assignment_permissions.py` for backward compatibility.
+3. **Membership rules**: Only users with the active `CANDIDATE` role may be added. Non-candidates are reported in `invalid_users` without failing the whole request.
+4. **Member resolution**: `add-members` / `remove-members` accept `user_ids` (integer PKs) and/or `emails` (case-insensitive). Responses always return HTTP 200 with detailed buckets: `added`/`removed`, `already_members`/`not_members`, `invalid_users`, and `not_found`.
+5. **Serializers**: Summary serializer for list (includes `member_count`); detail serializer for retrieve/create/update responses (includes `members` and `created_by_id`).
+6. **Logging**: Python `logging` plus hash-chained audit entries via `audit.utils.log_action` for create/update/delete and membership changes.
+7. **Dependencies**: `djangorestframework==3.15.*` already present in `requirements.txt`; no change required.
 
 ## API Endpoints
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/auth/self-register/` | POST | Public | Register as candidate |
-| `/api/auth/invitations/issue/` | POST | Coordinator or system admin | Issue invitation email |
-| `/api/auth/invitations/accept/` | POST | Public | Accept invitation, return JWT |
+| `/api/core/groups/` | GET | Coordinator or system admin | List groups (paginated) |
+| `/api/core/groups/` | POST | Coordinator or system admin | Create group |
+| `/api/core/groups/{id}/` | GET | Coordinator or system admin | Retrieve group with members |
+| `/api/core/groups/{id}/` | PATCH | Coordinator or system admin | Partial update |
+| `/api/core/groups/{id}/` | DELETE | Coordinator or system admin | Delete group |
+| `/api/core/groups/{id}/add-members/` | POST | Coordinator or system admin | Add members by `user_ids` and/or `emails` |
+| `/api/core/groups/{id}/remove-members/` | POST | Coordinator or system admin | Remove members by `user_ids` and/or `emails` |
 
-## Frontend Routes
+## Files Changed
 
-| Route | Component | Notes |
-|-------|-----------|-------|
-| `/register` | `SelfRegister` | Candidate self-registration |
-| `/accept-invite` | `AcceptInvite` | `?token=` query param |
-| `/accept-invitation` | `AcceptInvite` | Alias for backend email links |
-
-## Environment Variables
-
-| Variable | Scope | Default | Purpose |
-|----------|-------|---------|---------|
-| `ALLOW_SELF_REGISTRATION` | Backend | `false` | Toggle public self-registration |
-| `FRONTEND_URL` | Backend | — | Invitation/reset email links |
-| `VITE_API_BASE_URL` | Frontend | — (`http://localhost:8000` in `.env.development`) | API base URL |
+| File | Why |
+|------|-----|
+| `backend/src/core/models/groups.py` | `CandidateGroup` model |
+| `backend/src/core/models/__init__.py` | Export `CandidateGroup` |
+| `backend/src/core/migrations/0002_candidate_groups.py` | Schema migration |
+| `backend/src/core/serializers/groups.py` | Summary, detail, write, and member-action serializers |
+| `backend/src/core/permissions/__init__.py` | `IsCoordinatorOrAdmin` permission |
+| `backend/src/core/permissions/assignment_permissions.py` | Re-export `IsCoordinatorOrAdmin` |
+| `backend/src/core/views/group_views.py` | ViewSet with CRUD and member actions |
+| `backend/src/core/api_urls.py` | Router registration for `/api/core/` |
+| `backend/src/core/urls.py` | Include `api/core/` routes |
+| `backend/src/core/admin.py` | Admin registration |
+| `backend/src/core/settings/base.py` | OpenAPI tag for candidate groups |
+| `backend/src/core/tests/test_groups_api.py` | API tests |
 
 ## Verification
 
 ```bash
-# Backend
 cd backend
+pip install -r requirements.txt
 PYTHONPATH=src SECRET_KEY=test-secret-key DJANGO_SETTINGS_MODULE=core.settings.test \
-  python3 manage.py test authentication branding audit grading core
+  python3 -m pytest src/ -v
 
-# Frontend
-cd frontend
-npm ci
-npm test
-npm run lint
-npm run build
+python3 -m flake8 src/core/models/groups.py src/core/serializers/groups.py \
+  src/core/views/group_views.py src/core/api_urls.py src/core/admin.py \
+  src/core/permissions/__init__.py src/core/permissions/assignment_permissions.py \
+  src/core/tests/test_groups_api.py
 ```
 
 ## Open Questions / Follow-ups
 
-- Coordinator UI for issuing invitations (backend endpoint exists; no frontend page yet).
-- Dedicated backend `GET /auth/invitations/validate/` to avoid probe-based token validation.
-- HTML invitation emails using branding templates.
-- Deprecate legacy `RegisterPage` component if no longer needed elsewhere.
+- Should `Assignment.assignee_group_id` become a FK to `CandidateGroup` once assignment flows consume groups?
+- Should coordinators be restricted to groups they created, or is org-wide visibility correct?
+- Bulk import of members (CSV) and group duplication utilities.
