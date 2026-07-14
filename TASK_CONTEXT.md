@@ -1,7 +1,7 @@
 # Task Context: Results Release Gates & Candidate Visibility (Backend)
 
 **Branch:** `sunset/task/feat-1b924124`  
-**PR:** _(pending)_
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/13
 
 ## Scope
 
