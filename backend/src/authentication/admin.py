@@ -7,7 +7,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django import forms
 
-from .models import User
+from .models import Role, User, UserRole
 
 
 class UserCreationForm(forms.ModelForm):
@@ -83,3 +83,18 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ('email',)
     ordering = ('email',)
     filter_horizontal = ('groups', 'user_permissions',)
+
+
+@admin.register(Role)
+class RoleAdmin(admin.ModelAdmin):
+    list_display = ('key', 'name', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('key', 'name')
+
+
+@admin.register(UserRole)
+class UserRoleAdmin(admin.ModelAdmin):
+    list_display = ('user', 'role', 'assigned_at', 'assigned_by')
+    list_filter = ('role',)
+    search_fields = ('user__email', 'role__key')
+    raw_id_fields = ('user', 'assigned_by')

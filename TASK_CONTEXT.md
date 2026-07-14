@@ -1,90 +1,74 @@
-# Task Context: Audit Logging (feat-ccff06f0)
+# Task Context: Backend Role and User Management (sunset/task/9-24e719fa)
 
 ## Scope
 
-### Backend (completed)
-- Hash-chained `audit` Django app with `AuditLog` model, logging utilities, read-only admin, and staff APIs at `/api/audit/`
-- Development-only `POST /api/audit/test-log` endpoint (DEBUG guard)
+Implement administrative user and role management in the Django/DRF backend:
 
-### Frontend (this iteration)
-- Admin Audit Log Viewer at `/admin/audit`
-- API client (`getAuditLogs`, `verifyAuditChain`) and `AuditLogRow` types
-- Filter bar with debounced inputs, reset, page-based pagination
-- Expandable table rows for metadata/hash with copy-to-clipboard
-- Chain verification feedback
-- Session persistence for filters and pagination
-- Vitest + RTL tests for API client, components, and page
+- `Role` and `UserRole` models with migrations and default role seed data
+- Admin CRUD APIs at `/api/admin/roles/` and `/api/admin/users/`
+- `IsSystemAdmin` and `HasAnyRole` permission classes
+- Role assignment/removal endpoints and business-rule enforcement
+- Pytest coverage for roles, assignments, deactivation, and permissions
 
 ## Key Implementation Decisions
 
-### Backend
-1. **Hash chain**: SHA-256 over sorted JSON canonical payloads; `prev_hash` links entries.
-2. **Timestamp**: Explicit `timestamp` field (not `auto_now_add`) so stored value matches hash input.
-3. **Permissions**: Staff-only (`IsAdminUser`) for list/verify APIs.
-4. **Test endpoint**: View returns 404 when `DEBUG=False`; route always registered for testability.
-
-### Frontend
-1. **API client**: `frontend/src/api/audit.ts` follows `grading.ts` / `branding.ts` patterns (`authorizedFetch`, `ApiError`).
-2. **Auth**: `/admin/audit` wrapped in existing `AdminRoute` (staff probe via branding API).
-3. **Filters**: 300ms debounce on text/datetime inputs; page resets to 1 on filter change.
-4. **Pagination**: Page-based (`page`, `page_size`) matching backend API.
-5. **Persistence**: Filter + page state stored in `sessionStorage` (`audit-log-viewer-state`).
-6. **UX**: Expandable rows show `JsonPreview` + `CopyToClipboard`; verify button shows success/error banner.
-7. **Testing**: Added RTL `cleanup()` to global test setup to prevent DOM leakage between tests.
+1. **Role-based access**: System administration is gated by the `SYSTEM_ADMIN` role (not Django `is_staff` alone). `user_has_role()` checks active user + active role assignment.
+2. **URL layout**: Admin APIs live under `/api/admin/` (via `authentication.urls`) to avoid clashing with Django's `/admin/` site. Existing read-only user listing remains at `/api/auth/users/` as `AuthUserViewSet`.
+3. **User profile fields**: Added optional `first_name` and `last_name` on `User` so `UserSerializer` can expose full admin user records.
+4. **Business rules**:
+   - `SYSTEM_ADMIN` role cannot be deactivated or deleted
+   - Cannot deactivate/delete the last active system administrator
+   - Cannot assign inactive roles
+   - User delete is implemented as soft deactivation (`is_active=False`)
+5. **Seed data**: Migration `0004_seed_default_roles` idempotently seeds `SYSTEM_ADMIN`, `EXAMINER`, `COORDINATOR`, and `CANDIDATE`.
+6. **Testing**: Added `pytest.ini` and `test_roles.py`; full suite runs with `pytest` from `backend/`.
 
 ## Files Changed
 
-### Backend
 | File | Why |
 |------|-----|
-| `backend/src/audit/` | Model, utils, admin, views, urls, migrations, tests |
-| `backend/src/core/views.py` | DEBUG-guarded test-log endpoint |
-| `backend/src/core/urls.py` | Audit routes |
-| `backend/src/core/settings/base.py` | App registration, OpenAPI tag |
-| `backend/src/core/settings/test.py` | Explicit `DEBUG=True` for tests |
-| `backend/README.md` | Audit logging docs |
-
-### Frontend
-| File | Why |
-|------|-----|
-| `frontend/src/api/audit.ts` | `getAuditLogs`, `verifyAuditChain` |
-| `frontend/src/api/audit.types.ts` | `AuditLogRow` and related types |
-| `frontend/src/api/audit.test.ts` | API client tests |
-| `frontend/src/pages/admin/audit/` | AuditPage, Filters, JsonPreview, CopyToClipboard, tests |
-| `frontend/src/App.tsx` | `/admin/audit` route |
-| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Audit Log nav item |
-| `frontend/src/content/index.ts` | Sidebar label |
-| `frontend/src/test/setup.ts` | RTL cleanup after each test |
+| `backend/src/authentication/models.py` | `Role`, `UserRole`, `RoleKey`; `first_name`/`last_name` on `User` |
+| `backend/src/authentication/migrations/0003_*.py` | Schema migration |
+| `backend/src/authentication/migrations/0004_seed_default_roles.py` | Default role seed data |
+| `backend/src/authentication/serializers.py` | `RoleSerializer`, `UserSerializer`, `UserRoleAssignSerializer` |
+| `backend/src/authentication/views.py` | `RoleViewSet`, admin `UserViewSet`; renamed existing to `AuthUserViewSet` |
+| `backend/src/authentication/urls.py` | Admin router for roles/users |
+| `backend/src/authentication/utils.py` | `user_has_role`, `get_active_system_admin_count` |
+| `backend/src/authentication/admin.py` | Django admin for `Role` / `UserRole` |
+| `backend/src/authentication/tests/test_roles.py` | Role/user management tests |
+| `backend/src/core/permissions.py` | `IsSystemAdmin`, `HasAnyRole` |
+| `backend/src/core/settings/base.py` | OpenAPI tags for admin endpoints |
+| `backend/pytest.ini` | Pytest configuration |
+| `backend/.flake8` | Lint config (excludes migrations) |
 
 ## API Endpoints
 
-| Endpoint | Method | Auth | Used By |
-|----------|--------|------|---------|
-| `/api/audit/logs/` | GET | Staff JWT | AuditPage (list/filter/paginate) |
-| `/api/audit/verify/` | GET | Staff JWT | AuditPage (verify chain button) |
-| `/api/audit/test-log` | POST | JWT | Backend dev testing only |
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/admin/roles/` | GET, POST | SYSTEM_ADMIN | List/create roles |
+| `/api/admin/roles/{id}/` | GET, PUT, PATCH, DELETE | SYSTEM_ADMIN | Role detail/update/delete |
+| `/api/admin/users/` | GET, POST | SYSTEM_ADMIN | List/create users |
+| `/api/admin/users/{id}/` | GET, PUT, PATCH, DELETE | SYSTEM_ADMIN | User detail/update/soft-delete |
+| `/api/admin/users/{id}/assign-role/` | POST | SYSTEM_ADMIN | Assign role by `role_key` |
+| `/api/admin/users/{id}/remove-role/` | POST | SYSTEM_ADMIN | Remove role by `role_key` |
+
+## Assumptions
+
+- Admin API prefix is `/api/admin/` because `authentication.urls` is mounted at `/api/`.
+- `is_staff` / `is_superuser` remain for Django admin and legacy endpoints; new admin APIs use role-based `SYSTEM_ADMIN`.
+- Initial system administrators must be bootstrapped via Django admin, shell, or management command by assigning the `SYSTEM_ADMIN` role.
 
 ## Verification
 
-### Backend
 ```bash
 cd backend
-PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret \
-  python3 manage.py test audit authentication branding grading
-```
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm test
-npm run lint
-npm run build
+pip install -r requirements.txt
+PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret pytest
+flake8 src/authentication src/core/permissions.py
 ```
 
 ## Open Questions / Follow-ups
 
-- Integrate `@audit_log_action` into existing mutation endpoints (branding, grading).
-- Add dedicated audit log detail endpoint by entry ID.
-- Consider server-side cursor pagination if log volume grows large.
-- Add i18n for hardcoded Audit Log / Grading sidebar labels.
+- Bootstrap command to promote the demo/seed user to `SYSTEM_ADMIN` on deploy.
+- Extend role checks to grading/branding endpoints that currently use `IsAdminUser`.
+- Audit logging for role assignment and user deactivation events.

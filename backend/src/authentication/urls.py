@@ -9,6 +9,8 @@ from .views import (
     register_view,
     login_view,
     profile_view,
+    AuthUserViewSet,
+    RoleViewSet,
     UserViewSet,
     DocumentedTokenObtainPairView,
     DocumentedTokenRefreshView,
@@ -19,11 +21,13 @@ from .views import (
     PasswordResetConfirmView,
 )
 
+# Create routers for auth and admin endpoints.
+auth_router = DefaultRouter()
+auth_router.register(r'users', AuthUserViewSet, basename='auth-user')
 
-
-# Create a router and register our viewsets with it.
-router = DefaultRouter()
-router.register(r'users', UserViewSet)
+admin_router = DefaultRouter()
+admin_router.register(r'roles', RoleViewSet, basename='admin-role')
+admin_router.register(r'users', UserViewSet, basename='admin-user')
 
 urlpatterns = [
     # Custom auth endpoints
@@ -43,5 +47,6 @@ urlpatterns = [
     path('auth/password/reset/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 
     # Include router URLs
-    path('auth/', include(router.urls)),
+    path('auth/', include(auth_router.urls)),
+    path('admin/', include(admin_router.urls)),
 ]

@@ -180,6 +180,8 @@ SPECTACULAR_SETTINGS = {
     'TAGS': [
         {'name': 'Authentication', 'description': 'User authentication and JWT token management'},
         {'name': 'Users', 'description': 'User management operations'},
+        {'name': 'Admin Roles', 'description': 'System administrator role management'},
+        {'name': 'Admin Users', 'description': 'System administrator user management'},
         {'name': 'Health', 'description': 'Application health checks'},
         {'name': 'Branding', 'description': 'Organization branding and email content settings'},
         {'name': 'Grading', 'description': 'Objective question auto-scoring endpoints'},
