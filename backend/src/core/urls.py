@@ -20,6 +20,7 @@ from rest_framework.routers import DefaultRouter
 
 from core.views import test_audit_log
 from core.views.assignments import AssignmentViewSet
+from core.views.attempt_review import AttemptReviewView
 
 assignments_router = DefaultRouter()
 assignments_router.register(
@@ -64,6 +65,13 @@ urlpatterns = [
 
     # Assignments
     path('api/', include(assignments_router.urls)),
+
+    # Attempt review
+    path(
+        'api/attempts/<str:attempt_id>/review/',
+        AttemptReviewView.as_view(),
+        name='attempt_review',
+    ),
 
     # Core APIs (candidate groups, etc.)
     path('api/core/', include('core.api_urls')),
