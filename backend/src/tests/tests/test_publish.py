@@ -153,7 +153,17 @@ class TestPublishService:
 
 
 @pytest.mark.django_db
-class TestPublishAPI:
+class TestListAPI:
+    def test_list_tests(self, api_client, examiner, mcq_question):
+        test = make_draft_test(examiner, mcq_question)
+        client = auth_client(api_client, examiner)
+
+        response = client.get(TESTS_URL)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1
+        assert response.data[0]['id'] == str(test.id)
+
     def test_publish_endpoint(self, api_client, examiner, mcq_question):
         test = make_draft_test(examiner, mcq_question)
         client = auth_client(api_client, examiner)

@@ -1,61 +1,61 @@
-# Task Context: Backend Test Assembly APIs
+# Task Context: Test Builder UI (Frontend)
 
 **Branch:** `sunset/task/feat-26133733`  
 **PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/18
 
 ## Scope
 
-Implement a new Django `tests` app for test assembly: models, REST APIs, publish/archive workflows, selection rules, admin registration, and integration with question version snapshots.
+Implement examiner-facing Test Builder UI in the React frontend: list page, editor page, reusable builder components, React Query API integration, validation, and tests.
 
 ### In scope (completed)
-- `tests` app with models: `Test`, `TestSection`, `TestQuestionLink`, `SelectionRule`, `TestShuffleSeed`
-- Lifecycle states: Draft, Published, Archived
-- API endpoints under `/api/tests/` (create, retrieve, patch, publish, archive)
-- Publish flow snapshots questions via `question_bank.services.versioning.snapshot_questions_by_id`
-- Selection rule evaluation at publish time
-- Django admin with read-only enforcement for published/archived tests
-- `is_in_published_test` signal guard wired to published test links
-- Pytest coverage in `tests/tests/test_publish.py` and `tests/tests/test_rules.py`
+- Routes: `/tests` (list), `/tests/:id` (editor), `/tests/:id/preview` (read-only preview)
+- Components under `frontend/src/components/tests/`: meta form, rules builder, question picker, settings/integrity/visibility panels, lifecycle controls, preview launcher
+- API client `frontend/src/api/tests.ts` with React Query hooks in `hooks/useTests.ts`
+- Form validation via `utils/testBuilder.ts`
+- Vitest coverage for components, pages, API client, and validation helpers
+- Minimal backend `GET /api/tests/` list endpoint to support the list page
 
 ### Out of scope / deferred
-- Frontend `TestDetailPage` API integration
-- `Assignment.test_id` ForeignKey migration to `Test`
-- List/filter endpoints for tests
-- Per-attempt shuffle seed generation
+- Full candidate-facing test delivery UI
+- Deep question preview with live question bank text in preview table
+- Sidebar navigation link (can be added when IA is finalized)
 
 ## Key Implementation Decisions
 
-1. **Function-based DRF views** in `tests/views.py` per ticket spec; nested section/question payloads on create/patch.
-2. **`settings` JSONField** on `Test` stores shuffle and scoring options; `django.conf.settings` imported as `django_settings` to avoid name shadowing.
-3. **Rule resolution at publish**: `SelectionRule` rows stay editable in draft; publish creates `TestQuestionLink` rows with `source=rule` and pins `QuestionVersion`.
-4. **Cross-app versioning helper**: added `snapshot_questions_by_id()` in `question_bank/services/versioning.py` for publish flows.
-5. **Admin lock mixin**: `ReadOnlyWhenPublishedMixin` blocks add/change/delete when lifecycle is not draft.
-6. **Permissions**: examiner or system admin for mutations; authenticated read for test detail.
+1. **React Query introduced** via `@tanstack/react-query` and `QueryClientProvider` in `main.tsx` for test builder data flows.
+2. **Single-section editor model** maps UI state to one backend section with `assembly_mode` in section settings.
+3. **Examiner guard** on list/editor/preview routes; assignment route remains coordinator-accessible via existing page.
+4. **Preview route** shows pinned question link metadata; full question text preview deferred until detail API enrichment.
+5. **Backend list endpoint** added on same branch (`GET /api/tests/`) because prior API only supported create/detail.
 
 ## Files Changed
 
-| File | Why |
-|------|-----|
-| `backend/src/tests/` (new app) | Models, views, urls, admin, services, migrations, tests |
-| `backend/src/core/settings/base.py` | Register `tests` app; OpenAPI tag |
-| `backend/src/core/urls.py` | Mount `/api/tests/` |
-| `backend/src/question_bank/services/versioning.py` | `snapshot_questions_by_id` helper |
-| `backend/src/question_bank/signals.py` | Real `is_in_published_test` implementation |
+| Area | Files | Why |
+|------|-------|-----|
+| Frontend pages | `pages/tests/index.tsx`, `[id].tsx`, `preview.tsx` | List, editor, preview routes |
+| Frontend components | `components/tests/*` | Builder UI panels |
+| Frontend API/hooks | `api/tests.ts`, `hooks/useTests.ts`, `types/tests.ts`, `utils/testBuilder.ts` | API + state + validation |
+| Frontend app | `App.tsx`, `main.tsx`, `types/index.ts` | Routing and React Query setup |
+| Frontend tests | `*.test.tsx`, `api/tests.test.ts`, `utils/testBuilder.test.ts` | Coverage |
+| Backend (supporting) | `tests/views.py` | `GET /api/tests/` list endpoint |
 
 ## Verification
 
 ```bash
-cd backend
-pip install -r requirements.txt
-SECRET_KEY=test-secret DJANGO_SETTINGS_MODULE=core.settings.test PYTHONPATH=src python3 -m pytest src/ -v
-/home/ubuntu/.local/bin/flake8 src/tests src/question_bank/services/versioning.py src/question_bank/signals.py
+cd frontend
+npm ci
+npm test
+npm run lint
+npm run build
+
+cd ../backend
+SECRET_KEY=test-secret DJANGO_SETTINGS_MODULE=core.settings.test PYTHONPATH=src python3 -m pytest src/tests/tests/ -v
 ```
 
-Results: **228** backend tests passed (12 new).
+Results: **154** frontend tests passed; backend tests app tests pass.
 
 ## Open Questions / Follow-ups
 
-- Add test list endpoint and filters for examiner dashboards
-- Migrate `Assignment.test_id` to FK `Test`
-- Auto-generate per-attempt shuffle seeds when attempts are created
-- Expose pinned version metadata on question bank serializer for authoring UI
+- Enrich preview with question bank text joins
+- Add `/tests` link to sidebar navigation
+- Support multi-section editing in UI when product requires it

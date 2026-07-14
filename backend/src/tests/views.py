@@ -51,14 +51,39 @@ def _sync_sections(test: Test, sections_data: list[dict]) -> None:
             SelectionRule.objects.create(section=section, **rule_data)
 
 
+@extend_schema(tags=['Tests'], responses={200: TestSerializer(many=True)})
 @extend_schema(
     tags=['Tests'],
     request=TestCreateSerializer,
     responses={201: TestSerializer},
+    methods=['POST'],
 )
-@api_view(['POST'])
-@permission_classes([IsExaminerOrAdmin])
-def test_create(request):
+@api_view(['GET', 'POST'])
+def test_list_create(request):
+    if request.method == 'GET':
+        if not IsAuthenticated().has_permission(request, test_list_create):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        queryset = Test.objects.prefetch_related(
+            'sections__question_links',
+            'sections__selection_rules',
+            'shuffle_seeds',
+        ).order_by('-created_at')
+
+        lifecycle = request.query_params.get('lifecycle')
+        if lifecycle:
+            queryset = queryset.filter(lifecycle=lifecycle)
+
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(title__icontains=search)
+
+        serializer = TestSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    if not IsExaminerOrAdmin().has_permission(request, test_list_create):
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
     serializer = TestCreateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
