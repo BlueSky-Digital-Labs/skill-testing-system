@@ -6,6 +6,7 @@ import { DashboardPage } from '@pages/dashboard'
 import { BrandingPage } from '@pages/admin/branding'
 import { AuditPage } from '@pages/admin/audit'
 import { GradingList, GradingDetail } from '@pages/grading'
+import { TestAssignPage } from '@pages/tests/assign'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
 
@@ -67,6 +68,15 @@ function App() {
           <AdminRoute isAuthenticated={isAuthenticated}>
             <GradingDetail />
           </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/tests/:testId/assign"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <TestAssignPage />
+          </ProtectedRoute>
         }
       />
     </Routes>
