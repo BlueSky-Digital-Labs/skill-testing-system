@@ -18,6 +18,7 @@ import { ReleaseControl, CandidateResultPage, AdminResultPage } from '@pages/res
 import { AttemptCompletionPage } from '@pages/attempts'
 import AttemptRunnerPage from '@pages/attempts/[attemptId]'
 import TestStartPage from '@pages/tests/[id]/start'
+import { MonitoringDashboardPage } from '@pages/monitoring'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
 import { SystemAdminRoute } from '@components/organisms/SystemAdminRoute'
@@ -194,6 +195,9 @@ function App() {
       />
 
       {ReportRoutes({ isAuthenticated })}
+
+      <Route path="/monitoring" element={<MonitoringDashboardPage />} />
+      <Route path="/monitoring/:testId" element={<MonitoringDashboardPage />} />
     </Routes>
   )
 }

@@ -86,6 +86,7 @@ export const content = {
       branding: 'Branding',
       auditLog: 'Audit Log',
       reports: 'Reports',
+      monitoring: 'Monitoring',
       individualReport: 'Individual',
       testReport: 'Test summary',
       questionReport: 'Question performance',
