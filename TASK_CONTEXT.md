@@ -1,7 +1,7 @@
 # Task Context: Backend Notifications Subsystem
 
 **Branch:** `sunset/task/feat-fa423016`  
-**PR:** _(pending)_
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/27
 
 ## Scope
 
