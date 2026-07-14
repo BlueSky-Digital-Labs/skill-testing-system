@@ -11,9 +11,9 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Question
-from .permissions import IsExaminerOrAdmin
-from .serializers import QuestionSerializer
+from question_bank.models import Question
+from question_bank.permissions import IsExaminerOrAdmin
+from question_bank.serializers import QuestionSerializer
 
 
 @extend_schema(tags=['Question Bank'])
