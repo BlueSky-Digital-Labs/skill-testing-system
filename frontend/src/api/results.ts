@@ -76,3 +76,64 @@ export async function getCandidateResult(attemptId: string): Promise<CandidateRe
   const response = await authorizedFetch(`${getApiBase()}/results/candidate/${attemptId}/`)
   return parseResponse<CandidateResult>(response, 'Unable to load candidate result')
 }
+
+export interface CertificateDto {
+  id: string
+  attempt_id: string
+  issued_at: string
+  template_version: string
+  url: string
+  checksum_sha256: string
+  meta: Record<string, unknown>
+}
+
+interface CertificateApiResponse {
+  id: string
+  attempt_id: string
+  issued_at: string
+  template_version: string
+  checksum_sha256: string
+  revoked_at: string | null
+  meta: Record<string, unknown>
+  download_url?: string | null
+}
+
+function mapCertificateResponse(payload: CertificateApiResponse): CertificateDto {
+  return {
+    id: payload.id,
+    attempt_id: payload.attempt_id,
+    issued_at: payload.issued_at,
+    template_version: payload.template_version,
+    url: payload.download_url ?? '',
+    checksum_sha256: payload.checksum_sha256,
+    meta: payload.meta ?? {},
+  }
+}
+
+export async function getCertificate(attemptId: string): Promise<CertificateDto | null> {
+  const response = await authorizedFetch(`${getApiBase()}/results/${attemptId}/certificate/`)
+
+  if (response.status === 404) {
+    return null
+  }
+
+  const payload = await parseResponse<CertificateApiResponse>(
+    response,
+    'Unable to load certificate',
+  )
+  return mapCertificateResponse(payload)
+}
+
+export async function issueCertificate(attemptId: string): Promise<CertificateDto> {
+  const response = await authorizedFetch(`${getApiBase()}/results/${attemptId}/certificate/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ template_version: 'v1' }),
+  })
+
+  const payload = await parseResponse<CertificateApiResponse>(
+    response,
+    'Unable to issue certificate',
+  )
+  return mapCertificateResponse(payload)
+}

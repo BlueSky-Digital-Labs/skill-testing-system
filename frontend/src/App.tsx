@@ -13,7 +13,7 @@ import { AssignmentsListPage } from '@pages/tests/AssignmentsListPage'
 import { GroupsList, GroupDetail } from '@pages/coordinator'
 import { QuestionsList, QuestionEditPage, ImportPage } from '@pages/questions'
 import { TestDetailPage } from '@pages/tests/TestDetailPage'
-import { ReleaseControl, CandidateResult } from '@pages/results'
+import { ReleaseControl, CandidateResultPage, AdminResultPage } from '@pages/results'
 import { AttemptCompletionPage } from '@pages/attempts'
 import AttemptRunnerPage from '@pages/attempts/[attemptId]'
 import TestStartPage from '@pages/tests/[id]/start'
@@ -148,10 +148,19 @@ function App() {
       />
 
       <Route
+        path="/admin/results/:attemptId"
+        element={
+          <AdminRoute isAuthenticated={isAuthenticated}>
+            <AdminResultPage />
+          </AdminRoute>
+        }
+      />
+
+      <Route
         path="/results/:attemptId"
         element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <CandidateResult />
+            <CandidateResultPage />
           </ProtectedRoute>
         }
       />
