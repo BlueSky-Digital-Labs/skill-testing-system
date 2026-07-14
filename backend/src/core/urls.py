@@ -16,7 +16,17 @@ from drf_spectacular.views import (
 )
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
+from rest_framework.routers import DefaultRouter
+
 from core.views import test_audit_log
+from core.views.assignments import AssignmentViewSet
+
+assignments_router = DefaultRouter()
+assignments_router.register(
+    r'assignments',
+    AssignmentViewSet,
+    basename='assignment',
+)
 
 
 @extend_schema(
@@ -51,6 +61,9 @@ urlpatterns = [
     
     # Authentication
     path('api/', include('authentication.urls')),
+
+    # Assignments
+    path('api/', include(assignments_router.urls)),
 
     # Branding / organization settings
     path('', include('branding.urls')),

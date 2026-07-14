@@ -42,6 +42,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    'core.apps.CoreConfig',
     'authentication',
     'audit.apps.AuditConfig',
     'branding.apps.BrandingConfig',
@@ -186,6 +187,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Branding', 'description': 'Organization branding and email content settings'},
         {'name': 'Grading', 'description': 'Objective question auto-scoring endpoints'},
         {'name': 'Audit', 'description': 'Hash-chained audit logging and verification'},
+        {'name': 'Assignments', 'description': 'Exam assignment scheduling and availability'},
     ],
 }
 

@@ -1,62 +1,60 @@
-# Task Context: Backend Role and User Management (sunset/task/9-24e719fa)
+# Task Context: Backend Assignments and Availability Enforcement (sunset/task/feat-f7d06aea)
 
 ## Scope
 
-Implement administrative user and role management in the Django/DRF backend:
+Implement exam assignment scheduling and availability enforcement in the Django/DRF backend:
 
-- `Role` and `UserRole` models with migrations and default role seed data
-- Admin CRUD APIs at `/api/admin/roles/` and `/api/admin/users/`
-- `IsSystemAdmin` and `HasAnyRole` permission classes
-- Role assignment/removal endpoints and business-rule enforcement
-- Pytest coverage for roles, assignments, deactivation, and permissions
+- `Assignment` model with migrations under `core`
+- Availability helpers (`is_within_window`, `is_overdue`, `attempts_remaining`, `assignment_state`)
+- Assignment serializers with computed `state` and create-time validation
+- `IsCoordinatorOrAdmin` permission (COORDINATOR or SYSTEM_ADMIN)
+- Assignment API at `/api/assignments/` with list filtering by dashboard `state`
+- Pytest coverage for create, list filters, temporal validation, and archive
 
 ## Key Implementation Decisions
 
-1. **Role-based access**: System administration is gated by the `SYSTEM_ADMIN` role (not Django `is_staff` alone). `user_has_role()` checks active user + active role assignment.
-2. **URL layout**: Admin APIs live under `/api/admin/` (via `authentication.urls`) to avoid clashing with Django's `/admin/` site. Existing read-only user listing remains at `/api/auth/users/` as `AuthUserViewSet`.
-3. **User profile fields**: Added optional `first_name` and `last_name` on `User` so `UserSerializer` can expose full admin user records.
-4. **Business rules**:
-   - `SYSTEM_ADMIN` role cannot be deactivated or deleted
-   - Cannot deactivate/delete the last active system administrator
-   - Cannot assign inactive roles
-   - User delete is implemented as soft deactivation (`is_active=False`)
-5. **Seed data**: Migration `0004_seed_default_roles` idempotently seeds `SYSTEM_ADMIN`, `EXAMINER`, `COORDINATOR`, and `CANDIDATE`.
-6. **Testing**: Added `pytest.ini` and `test_roles.py`; full suite runs with `pytest` from `backend/`.
+1. **Core as a Django app**: Registered `core.apps.CoreConfig` so assignment models and migrations live in `backend/src/core/` as specified. Existing shared permissions and audit helper views were moved into package modules (`core/permissions/`, `core/views/`) to avoid import shadowing.
+2. **External UUID references**: `test_id`, `assignee_user_id`, `assignee_group_id`, and `created_by_user_id` are `UUIDField`s without FKs. `test_id` has a TODO for a future `Test` model. `created_by_user_id` is derived from the authenticated user's integer PK via `uuid.UUID(int=user_pk)` on create.
+3. **Dashboard state**: List queries annotate `state` (`upcoming`, `open`, `overdue`, `closed`, `archived`) using `Case`/`When` so `?state=` filters work at the database layer. Retrieve/create responses compute state via the same helper when no annotation is present.
+4. **Unique constraints**: DB-level uniqueness on `(test_id, assignee_user_id)` and `(test_id, assignee_group_id)`. DRF's auto-generated unique validators are disabled on `AssignmentCreateSerializer` because they incorrectly require both assignee fields when only one is set.
+5. **Permissions**: Coordinators and system administrators may manage assignments. Candidates and other roles receive 403.
+6. **Archive**: Custom `POST /api/assignments/{id}/archive/` sets `status=archived` (soft archive, not delete).
 
 ## Files Changed
 
 | File | Why |
 |------|-----|
-| `backend/src/authentication/models.py` | `Role`, `UserRole`, `RoleKey`; `first_name`/`last_name` on `User` |
-| `backend/src/authentication/migrations/0003_*.py` | Schema migration |
-| `backend/src/authentication/migrations/0004_seed_default_roles.py` | Default role seed data |
-| `backend/src/authentication/serializers.py` | `RoleSerializer`, `UserSerializer`, `UserRoleAssignSerializer` |
-| `backend/src/authentication/views.py` | `RoleViewSet`, admin `UserViewSet`; renamed existing to `AuthUserViewSet` |
-| `backend/src/authentication/urls.py` | Admin router for roles/users |
-| `backend/src/authentication/utils.py` | `user_has_role`, `get_active_system_admin_count` |
-| `backend/src/authentication/admin.py` | Django admin for `Role` / `UserRole` |
-| `backend/src/authentication/tests/test_roles.py` | Role/user management tests |
-| `backend/src/core/permissions.py` | `IsSystemAdmin`, `HasAnyRole` |
-| `backend/src/core/settings/base.py` | OpenAPI tags for admin endpoints |
-| `backend/pytest.ini` | Pytest configuration |
-| `backend/.flake8` | Lint config (excludes migrations) |
+| `backend/src/core/apps.py` | Register `core` as a Django app |
+| `backend/src/core/models/assignments.py` | `Assignment` model and `AssignmentStatus` |
+| `backend/src/core/models/__init__.py` | Model exports |
+| `backend/src/core/migrations/0001_initial.py` | Schema migration for assignments |
+| `backend/src/core/services/availability.py` | Window, overdue, attempts, and state helpers |
+| `backend/src/core/serializers/assignments.py` | Read/create serializers with validation |
+| `backend/src/core/permissions/__init__.py` | Moved shared `IsSystemAdmin` / `HasAnyRole` |
+| `backend/src/core/permissions/assignment_permissions.py` | `IsCoordinatorOrAdmin` |
+| `backend/src/core/views/assignments.py` | `AssignmentViewSet` with state annotations |
+| `backend/src/core/views/__init__.py` | Moved `test_audit_log` from deleted `views.py` |
+| `backend/src/core/urls.py` | Registered assignments router at `/api/assignments/` |
+| `backend/src/core/settings/base.py` | Added `core` app and OpenAPI tag |
+| `backend/src/core/tests/test_assignments_api.py` | API and availability tests |
+| `backend/src/core/permissions.py` | Removed (replaced by package) |
+| `backend/src/core/views.py` | Removed (replaced by package) |
 
 ## API Endpoints
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/admin/roles/` | GET, POST | SYSTEM_ADMIN | List/create roles |
-| `/api/admin/roles/{id}/` | GET, PUT, PATCH, DELETE | SYSTEM_ADMIN | Role detail/update/delete |
-| `/api/admin/users/` | GET, POST | SYSTEM_ADMIN | List/create users |
-| `/api/admin/users/{id}/` | GET, PUT, PATCH, DELETE | SYSTEM_ADMIN | User detail/update/soft-delete |
-| `/api/admin/users/{id}/assign-role/` | POST | SYSTEM_ADMIN | Assign role by `role_key` |
-| `/api/admin/users/{id}/remove-role/` | POST | SYSTEM_ADMIN | Remove role by `role_key` |
+| `/api/assignments/` | GET | COORDINATOR, SYSTEM_ADMIN | List assignments (filter: `test_id`, `assignee_user_id`, `assignee_group_id`, `status`, `state`) |
+| `/api/assignments/` | POST | COORDINATOR, SYSTEM_ADMIN | Create assignment |
+| `/api/assignments/{id}/` | GET | COORDINATOR, SYSTEM_ADMIN | Retrieve assignment |
+| `/api/assignments/{id}/` | PATCH | COORDINATOR, SYSTEM_ADMIN | Partial update |
+| `/api/assignments/{id}/archive/` | POST | COORDINATOR, SYSTEM_ADMIN | Archive assignment |
 
 ## Assumptions
 
-- Admin API prefix is `/api/admin/` because `authentication.urls` is mounted at `/api/`.
-- `is_staff` / `is_superuser` remain for Django admin and legacy endpoints; new admin APIs use role-based `SYSTEM_ADMIN`.
-- Initial system administrators must be bootstrapped via Django admin, shell, or management command by assigning the `SYSTEM_ADMIN` role.
+- Assignee and test UUIDs are validated only for format, not existence in other services yet.
+- Nullable unique constraints allow multiple rows with `NULL` assignee fields at the DB level; serializer enforces at least one assignee on create.
+- Temporal order: `opens_at <= due_at <= closes_at` when those fields are provided.
 
 ## Verification
 
@@ -64,11 +62,13 @@ Implement administrative user and role management in the Django/DRF backend:
 cd backend
 pip install -r requirements.txt
 PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret pytest
-flake8 src/authentication src/core/permissions.py
+PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret python manage.py makemigrations core
+flake8 src/core/models src/core/services src/core/serializers src/core/permissions src/core/views/assignments.py src/core/tests/test_assignments_api.py
 ```
 
 ## Open Questions / Follow-ups
 
-- Bootstrap command to promote the demo/seed user to `SYSTEM_ADMIN` on deploy.
-- Extend role checks to grading/branding endpoints that currently use `IsAdminUser`.
-- Audit logging for role assignment and user deactivation events.
+- Replace `test_id` UUID with a `ForeignKey` when the Test model lands.
+- Map `created_by_user_id` / `assignee_user_id` to `authentication.User` once user IDs are UUID-based or a mapping table exists.
+- Partial unique indexes (PostgreSQL) to prevent duplicate NULL assignee rows if that becomes a concern.
+- Candidate-facing assignment discovery and attempt submission APIs.
