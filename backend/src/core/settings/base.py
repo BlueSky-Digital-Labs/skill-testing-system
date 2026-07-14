@@ -44,6 +44,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     'authentication',
     'branding.apps.BrandingConfig',
+    'grading.apps.GradingConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -180,6 +181,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Users', 'description': 'User management operations'},
         {'name': 'Health', 'description': 'Application health checks'},
         {'name': 'Branding', 'description': 'Organization branding and email content settings'},
+        {'name': 'Grading', 'description': 'Objective question auto-scoring endpoints'},
     ],
 }
 

@@ -12,6 +12,7 @@ import {
   Settings, 
   LogOut,
   Palette,
+  ClipboardCheck,
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -61,11 +62,18 @@ export const Sidebar = () => {
       path: '/settings'
     },
     ...(isAdmin
-      ? [{
-          icon: Palette,
-          label: sidebarContent.menuItems.branding,
-          path: '/admin/branding',
-        }]
+      ? [
+          {
+            icon: Palette,
+            label: sidebarContent.menuItems.branding,
+            path: '/admin/branding',
+          },
+          {
+            icon: ClipboardCheck,
+            label: 'Grading',
+            path: '/grading',
+          },
+        ]
       : []),
   ]
 
