@@ -1,6 +1,7 @@
 # Task Context: Candidate Onboarding (Self-Registration & Invitations)
 
-**Branch:** `sunset/task/feat-aea99f83`
+**Branch:** `sunset/task/feat-aea99f83`  
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/10
 
 ## Scope
 
