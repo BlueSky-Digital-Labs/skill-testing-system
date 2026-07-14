@@ -77,6 +77,9 @@ urlpatterns = [
     # Audit logging
     path('api/audit/', include('audit.urls')),
     path('api/audit/test-log', test_audit_log, name='audit_test_log'),
+
+    # Question bank
+    path('api/question-bank/', include('question_bank.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

@@ -47,6 +47,7 @@ LOCAL_APPS = [
     'audit.apps.AuditConfig',
     'branding.apps.BrandingConfig',
     'grading.apps.GradingConfig',
+    'question_bank.apps.QuestionBankConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -189,6 +190,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Audit', 'description': 'Hash-chained audit logging and verification'},
         {'name': 'Assignments', 'description': 'Exam assignment scheduling and availability'},
         {'name': 'Candidate Groups', 'description': 'Candidate group membership management'},
+        {'name': 'Question Bank', 'description': 'Question bank CRUD and image uploads'},
     ],
 }
 
