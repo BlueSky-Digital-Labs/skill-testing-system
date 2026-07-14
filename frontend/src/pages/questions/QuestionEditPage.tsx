@@ -37,7 +37,6 @@ import {
   validateQuestionForm,
   type QuestionFormState,
 } from '@/utils/questionBank'
-import { QuestionVersionBadge } from './components/QuestionVersionBadge'
 import { SaveVersionConfirmModal } from './components/SaveVersionConfirmModal'
 import { VersionHistorySection } from './components/VersionHistorySection'
 import '../admin/admin.css'

@@ -1,5 +1,6 @@
 import { ApiError } from '@/api/auth'
-import { authorizedFetch, getApiBase } from '@/api/client'
+import { authorizedFetch } from '@/api/http'
+import { getApiBase } from '@/api/client'
 
 export type AssignmentStatus = 'draft' | 'active' | 'archived'
 export type AssignmentState = 'upcoming' | 'open' | 'overdue' | 'closed' | 'archived'
