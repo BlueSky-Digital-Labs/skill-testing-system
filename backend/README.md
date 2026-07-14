@@ -72,6 +72,13 @@ backend/
 │       ├── auth.py
 │       ├── admin.py
 │       └── tests/
+│   └── audit/                  # Hash-chained audit logging
+│       ├── models.py           # AuditLog model
+│       ├── utils.py            # Logging helpers, decorators, verification
+│       ├── views.py            # Read-only admin APIs
+│       ├── urls.py
+│       ├── admin.py
+│       └── tests/
 ├── requirements.txt
 ├── Dockerfile
 ├── entrypoint.sh
@@ -327,6 +334,9 @@ make test-coverage
 | `/api/grading/grade/` | POST | Submit a manual grade for a queue item | JWT (staff) |
 | `/api/grading/aggregate/attempt/` | POST | Aggregate objective + manual scores for an attempt | JWT (staff) |
 | `/api/grading/result/<attempt_id>/` | GET | Retrieve persisted combined result | JWT (staff) |
+| `/api/audit/logs/` | GET | List hash-chained audit logs (filterable) | JWT (staff) |
+| `/api/audit/verify/` | GET | Verify audit log hash chain integrity | JWT (staff) |
+| `/api/audit/test-log` | POST | Create a `DEV_TEST` audit entry (DEBUG only) | JWT |
 
 ## 📖 API Documentation
 
@@ -604,6 +614,64 @@ curl -X GET http://localhost:8000/api/grading/result/attempt-123/ \
 ```
 
 Pass/fail is determined from `TestConfigSnapshot` using `passing_score` and `pass_type` (`absolute` or `percent`).
+
+### Audit Logging (staff)
+
+The `audit` app records immutable, hash-chained audit events. Each entry links to the previous entry's hash so tampering can be detected.
+
+**Programmatic logging**
+
+```python
+from audit.utils import log_action, audit_log_action, AuditLogMixin
+
+# Direct logging
+log_action(
+    action='UPDATE',
+    entity_type='user',
+    entity_id='42',
+    metadata={'field': 'email'},
+    request=request,
+)
+
+# Function-based view decorator (logs after successful 2xx response)
+@audit_log_action('DELETE', entity_type='document', entity_id='doc-1')
+def delete_document(request):
+    ...
+
+# Class-based view helper
+class MyView(AuditLogMixin, APIView):
+    def post(self, request):
+        response = Response({'ok': True})
+        self.log_audit_action(
+            request,
+            response,
+            action='CREATE',
+            entity_type='item',
+            entity_id='new-id',
+        )
+        return response
+```
+
+**Read APIs**
+
+```bash
+# List audit logs (optional filters: actor, action, entity_type, entity_id, from, to, page, page_size)
+curl -X GET "http://localhost:8000/api/audit/logs/?action=CREATE&page=1&page_size=20" \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN"
+
+# Verify hash chain integrity
+curl -X GET http://localhost:8000/api/audit/verify/ \
+  -H "Authorization: Bearer YOUR_STAFF_ACCESS_TOKEN"
+```
+
+**Development test endpoint** (returns 404 when `DEBUG=False`):
+
+```bash
+curl -X POST http://localhost:8000/api/audit/test-log \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Audit entries are also visible in Django Admin as read-only records.
 
 ## 🌐 CORS Configuration
 

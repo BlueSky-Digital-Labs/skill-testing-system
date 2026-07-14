@@ -85,7 +85,8 @@ export const content = {
       discoverySession: 'Discovery Session',
       feedback: 'Feedback',
       settings: 'Settings',
-      branding: 'Branding'
+      branding: 'Branding',
+      auditLog: 'Audit Log'
     },
     user: {
       logout: 'Logout'

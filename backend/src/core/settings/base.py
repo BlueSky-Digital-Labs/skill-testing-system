@@ -43,6 +43,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     'authentication',
+    'audit.apps.AuditConfig',
     'branding.apps.BrandingConfig',
     'grading.apps.GradingConfig',
 ]
@@ -182,6 +183,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Health', 'description': 'Application health checks'},
         {'name': 'Branding', 'description': 'Organization branding and email content settings'},
         {'name': 'Grading', 'description': 'Objective question auto-scoring endpoints'},
+        {'name': 'Audit', 'description': 'Hash-chained audit logging and verification'},
     ],
 }
 

@@ -1,63 +1,68 @@
-# Task Context: Grading Workspace (feat-24624271)
+# Task Context: Audit Logging (feat-ccff06f0)
 
 ## Scope
 
 ### Backend (completed)
-- Objective auto-scoring engine (`ObjectiveScore`, `ScoringPolicy`, scoring services/APIs)
-- Manual grading queue (`FreeTextQueueItem`, `ManualGrade`)
-- Combined attempt aggregation (`CombinedResult`, `TestConfigSnapshot`, `compile_attempt_scores`)
-- Staff-protected grading APIs at `/api/grading/`
+- Hash-chained `audit` Django app with `AuditLog` model, logging utilities, read-only admin, and staff APIs at `/api/audit/`
+- Development-only `POST /api/audit/test-log` endpoint (DEBUG guard)
 
 ### Frontend (this iteration)
-- Grading workspace UI at `/grading` and `/grading/:queueItemId`
-- API client for queue list, manual grade submission, aggregation, and combined results
-- Components: `QueueTable`, `GradeForm`, `ResultSummary`
-- Blind marking display (`Anonymous` when `blind_marking=true`)
-- Staff-only routes via existing `AdminRoute`
-- Vitest + React Testing Library coverage for components and grading flow
+- Admin Audit Log Viewer at `/admin/audit`
+- API client (`getAuditLogs`, `verifyAuditChain`) and `AuditLogRow` types
+- Filter bar with debounced inputs, reset, page-based pagination
+- Expandable table rows for metadata/hash with copy-to-clipboard
+- Chain verification feedback
+- Session persistence for filters and pagination
+- Vitest + RTL tests for API client, components, and page
 
 ## Key Implementation Decisions
 
 ### Backend
-1. **Aggregation**: `compile_attempt_scores(attempt_id)` merges objective and manual scores by topic; pass/fail from `TestConfigSnapshot`.
-2. **Blind marking**: Backend omits `candidate_display` when `blind_marking=True`; frontend also maps to `Anonymous`.
-3. **Auth**: JWT + `is_staff` via `@require_staff_or_examiner`.
+1. **Hash chain**: SHA-256 over sorted JSON canonical payloads; `prev_hash` links entries.
+2. **Timestamp**: Explicit `timestamp` field (not `auto_now_add`) so stored value matches hash input.
+3. **Permissions**: Staff-only (`IsAdminUser`) for list/verify APIs.
+4. **Test endpoint**: View returns 404 when `DEBUG=False`; route always registered for testability.
 
 ### Frontend
-1. **API client**: `frontend/src/api/grading.ts` uses `authorizedFetch` from `http.ts` (re-exported via `client.ts`).
-2. **Pagination**: `listQueue` supports `next_cursor` from API; falls back to client-side cursor pagination when backend returns full result sets.
-3. **Detail navigation**: Queue item passed via router `state`; falls back to `findQueueItem` lookup.
-4. **Grading flow**: Submit grade → `aggregateAttempt` → refresh `ResultSummary` with combined result.
-5. **Error handling**: Surfaces 400/409-style conflicts for double grading attempts.
-6. **Routing**: `/grading` and `/grading/:queueItemId` wrapped in `AdminRoute`; sidebar link for staff users.
+1. **API client**: `frontend/src/api/audit.ts` follows `grading.ts` / `branding.ts` patterns (`authorizedFetch`, `ApiError`).
+2. **Auth**: `/admin/audit` wrapped in existing `AdminRoute` (staff probe via branding API).
+3. **Filters**: 300ms debounce on text/datetime inputs; page resets to 1 on filter change.
+4. **Pagination**: Page-based (`page`, `page_size`) matching backend API.
+5. **Persistence**: Filter + page state stored in `sessionStorage` (`audit-log-viewer-state`).
+6. **UX**: Expandable rows show `JsonPreview` + `CopyToClipboard`; verify button shows success/error banner.
+7. **Testing**: Added RTL `cleanup()` to global test setup to prevent DOM leakage between tests.
 
 ## Files Changed
 
 ### Backend
 | File | Why |
 |------|-----|
-| `backend/src/grading/` | Models, services, aggregates, views, tests, migrations |
+| `backend/src/audit/` | Model, utils, admin, views, urls, migrations, tests |
+| `backend/src/core/views.py` | DEBUG-guarded test-log endpoint |
+| `backend/src/core/urls.py` | Audit routes |
+| `backend/src/core/settings/base.py` | App registration, OpenAPI tag |
+| `backend/src/core/settings/test.py` | Explicit `DEBUG=True` for tests |
+| `backend/README.md` | Audit logging docs |
 
 ### Frontend
 | File | Why |
 |------|-----|
-| `frontend/src/api/client.ts` | Re-export authorized fetch + API base helper |
-| `frontend/src/api/grading.ts` | Grading API client and display helpers |
-| `frontend/src/api/grading.test.ts` | API client tests |
-| `frontend/src/components/grading/` | QueueTable, GradeForm, ResultSummary + styles/tests |
-| `frontend/src/pages/grading/` | GradingList, GradingDetail pages + integration test |
-| `frontend/src/App.tsx` | Grading routes |
-| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Grading nav link for admins |
-| `frontend/package.json` | Added React Testing Library dev dependencies |
+| `frontend/src/api/audit.ts` | `getAuditLogs`, `verifyAuditChain` |
+| `frontend/src/api/audit.types.ts` | `AuditLogRow` and related types |
+| `frontend/src/api/audit.test.ts` | API client tests |
+| `frontend/src/pages/admin/audit/` | AuditPage, Filters, JsonPreview, CopyToClipboard, tests |
+| `frontend/src/App.tsx` | `/admin/audit` route |
+| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Audit Log nav item |
+| `frontend/src/content/index.ts` | Sidebar label |
+| `frontend/src/test/setup.ts` | RTL cleanup after each test |
 
-## API Endpoints Used
+## API Endpoints
 
-| Endpoint | Method | Used By |
-|----------|--------|---------|
-| `/api/grading/queue/list` | GET | GradingList |
-| `/api/grading/grade` | POST | GradingDetail |
-| `/api/grading/aggregate/attempt` | POST | GradingDetail |
-| `/api/grading/result/<attempt_id>/` | GET | GradingDetail |
+| Endpoint | Method | Auth | Used By |
+|----------|--------|------|---------|
+| `/api/audit/logs/` | GET | Staff JWT | AuditPage (list/filter/paginate) |
+| `/api/audit/verify/` | GET | Staff JWT | AuditPage (verify chain button) |
+| `/api/audit/test-log` | POST | JWT | Backend dev testing only |
 
 ## Verification
 
@@ -65,27 +70,21 @@
 ```bash
 cd backend
 PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret \
-  python3 manage.py test grading authentication branding
+  python3 manage.py test audit authentication branding grading
 ```
 
 ### Frontend
 ```bash
 cd frontend
 npm install
-npm run test
+npm test
 npm run lint
 npm run build
 ```
 
 ## Open Questions / Follow-ups
 
-- Backend queue list does not yet return server-side `next_cursor`; frontend paginates client-side until API adds cursor support.
-- Add dedicated GET endpoint for single queue item instead of list lookup fallback.
-- Expose grader-facing queue item detail without candidate metadata when blind marking is enabled server-side only.
-- Add drf-spectacular / OpenAPI docs for grading endpoints.
-
-## Assumptions / Limitations
-
-- Staff access is verified via existing `AdminRoute` (branding API probe).
-- Combined result may not exist until after first aggregation; detail page handles 404 gracefully.
-- Grading sidebar label is hardcoded (not yet in content/i18n system).
+- Integrate `@audit_log_action` into existing mutation endpoints (branding, grading).
+- Add dedicated audit log detail endpoint by entry ID.
+- Consider server-side cursor pagination if log volume grows large.
+- Add i18n for hardcoded Audit Log / Grading sidebar labels.

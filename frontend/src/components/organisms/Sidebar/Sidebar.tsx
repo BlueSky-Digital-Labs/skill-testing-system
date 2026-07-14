@@ -13,6 +13,7 @@ import {
   LogOut,
   Palette,
   ClipboardCheck,
+  ScrollText,
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -72,6 +73,11 @@ export const Sidebar = () => {
             icon: ClipboardCheck,
             label: 'Grading',
             path: '/grading',
+          },
+          {
+            icon: ScrollText,
+            label: sidebarContent.menuItems.auditLog,
+            path: '/admin/audit',
           },
         ]
       : []),
