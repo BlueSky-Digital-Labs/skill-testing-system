@@ -15,6 +15,8 @@ import { QuestionsList, QuestionEditPage, ImportPage } from '@pages/questions'
 import { TestDetailPage } from '@pages/tests/TestDetailPage'
 import { ReleaseControl, CandidateResult } from '@pages/results'
 import { AttemptCompletionPage } from '@pages/attempts'
+import AttemptRunnerPage from '@pages/attempts/[attemptId]'
+import TestStartPage from '@pages/tests/[id]/start'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
 import { SystemAdminRoute } from '@components/organisms/SystemAdminRoute'
@@ -150,6 +152,24 @@ function App() {
         element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <CandidateResult />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/attempts/:attemptId"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <AttemptRunnerPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tests/:id/start"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <TestStartPage />
           </ProtectedRoute>
         }
       />

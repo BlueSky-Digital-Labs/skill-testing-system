@@ -1,0 +1,234 @@
+.attempt-runner {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--hd-surface-muted, #f5f7fb);
+  color: var(--hd-text, #1f2937);
+}
+
+.attempt-runner__shell {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.attempt-runner__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid var(--hd-border, #d9e0ec);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.attempt-runner__eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--hd-text-muted, #64748b);
+}
+
+.attempt-runner__title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.attempt-runner__header-meta {
+  text-align: right;
+}
+
+.attempt-runner__timer {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #eef2ff;
+}
+
+.attempt-runner__timer--warning {
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.attempt-runner__timer-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.attempt-runner__timer-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.attempt-runner__save-status {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+.attempt-runner__save-status--saved {
+  color: #166534;
+}
+
+.attempt-runner__save-status--error {
+  color: #b91c1c;
+}
+
+.attempt-runner__panel {
+  background: #fff;
+  border: 1px solid var(--hd-border, #d9e0ec);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.attempt-runner__question {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.attempt-runner__question-text {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.attempt-runner__options {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.attempt-runner__option {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border: 1px solid var(--hd-border, #d9e0ec);
+  border-radius: 8px;
+  background: #fafbff;
+}
+
+.attempt-runner__text-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.attempt-runner__text-input,
+.attempt-runner__textarea {
+  width: 100%;
+  border: 1px solid var(--hd-border, #d9e0ec);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+}
+
+.attempt-runner__navigator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.attempt-runner__question-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.attempt-runner__question-chip {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--hd-border, #d9e0ec);
+  background: #fff;
+  cursor: pointer;
+}
+
+.attempt-runner__question-chip--active {
+  border-color: #4338ca;
+  background: #eef2ff;
+  font-weight: 700;
+}
+
+.attempt-runner__question-chip--answered {
+  background: #ecfdf5;
+}
+
+.attempt-runner__nav-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.attempt-runner__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid var(--hd-border, #d9e0ec);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.attempt-runner__footer-note {
+  margin: 0;
+  color: var(--hd-text-muted, #64748b);
+}
+
+.attempt-runner__error,
+.attempt-runner__message {
+  margin: 0;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.attempt-runner__error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.attempt-runner__message {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.attempt-runner__start {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.attempt-runner__start-card {
+  width: min(480px, 100%);
+  background: #fff;
+  border: 1px solid var(--hd-border, #d9e0ec);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.attempt-runner__start-card h1 {
+  margin-top: 0;
+}
+
+@media (max-width: 720px) {
+  .attempt-runner__header,
+  .attempt-runner__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attempt-runner__header-meta {
+    text-align: left;
+  }
+}
