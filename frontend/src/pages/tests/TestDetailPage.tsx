@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { DashboardLayout } from '@components/templates/DashboardLayout'
 import { Button } from '@components/atoms/Button'
+import { PreviewLauncher } from '@/components/preview'
 import { ApiError } from '@/api/auth'
 import { listAssignments, type AssignmentRow } from './assign/api'
 import { QuestionVersionBadge } from '../questions/components/QuestionVersionBadge'
@@ -20,6 +21,7 @@ export interface TestDetailQuestion {
 interface TestDetailPageProps {
   testTitle?: string
   questions?: TestDetailQuestion[]
+  hasUnsavedChanges?: boolean
 }
 
 function formatDateTime(value: string | null): string {
@@ -44,6 +46,7 @@ function formatAssignee(row: AssignmentRow): string {
 export function TestDetailPage({
   testTitle,
   questions: questionsProp,
+  hasUnsavedChanges = false,
 }: TestDetailPageProps) {
   const { testId = '' } = useParams<{ testId: string }>()
   const [assignments, setAssignments] = useState<AssignmentRow[]>([])
@@ -101,6 +104,7 @@ export function TestDetailPage({
             {testId && <p className="tests-page__test-id">Test ID: {testId}</p>}
           </div>
           <div className="tests-page__header-actions">
+            {testId && <PreviewLauncher testId={testId} hasUnsavedChanges={hasUnsavedChanges} />}
             {testId && (
               <Link to={`/tests/${testId}/assign`}>
                 <Button variant="primary">Manage assignments</Button>

@@ -1,0 +1,77 @@
+.attempt-runner--preview .attempt-runner__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.attempt-runner__preview-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1e3a8a;
+  background: #dbeafe;
+}
+
+.attempt-runner__validation-status {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.attempt-runner__validation-status--success {
+  color: #166534;
+}
+
+.attempt-runner__validation-status--error {
+  color: #b91c1c;
+}
+
+.attempt-runner__summary {
+  background: #fff;
+  border: 1px solid var(--hd-border, #d9e0ec);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.attempt-runner__summary h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.attempt-runner__summary-score {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+}
+
+.attempt-runner__summary-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.attempt-runner__summary-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--hd-surface-muted, #f5f7fb);
+}
+
+.attempt-runner__placeholder {
+  background: #fff;
+  border: 1px dashed var(--hd-border, #d9e0ec);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.attempt-runner__back-link {
+  margin-top: 1rem;
+}
