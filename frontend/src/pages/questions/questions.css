@@ -1,3 +1,9 @@
+.questions-page__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .questions-page__filters select {
   min-width: 160px;
   padding: 0.5rem 0.75rem;

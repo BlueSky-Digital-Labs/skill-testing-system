@@ -1,85 +1,87 @@
-# Task Context: Attempt Review Disclosure (Backend + Frontend)
+# Task Context: CSV/XLSX Question Import (Backend + Frontend)
 
-**Branch:** `sunset/task/feat-00916970`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/14
+**Branch:** `sunset/task/feat-287d700b`  
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/15
 
 ## Scope
 
-End-to-end **attempt review disclosure** for candidates after test completion (Task #14).
+Bulk import questions from CSV/XLSX spreadsheets into the Django question bank, with an examiner-facing import UI.
 
 ### Backend (completed)
-- `DisclosureMode` policy enum (`SCORE_ONLY`, `SCORE_AND_FEEDBACK`, `WITHHOLD_UNTIL_RELEASE`)
-- `evaluate_disclosure` and `filter_attempt_payload` helpers
-- `GET /api/attempts/{id}/review/` DRF view with owner/staff permissions
-- Serializer adapter assembling attempt review payloads from grading data
-- Unit and API integration tests
+- Downloadable import templates (CSV default, XLSX via `file_format=xlsx`)
+- Two-step import API: parse/validate, then commit
+- Spreadsheet parser for CSV and XLSX (`openpyxl`)
+- Row validator aligned with existing question-type rules
+- Transactional bulk upsert (create new rows; update when `id` matches an existing question)
+- `import_questions` management command with dry-run and `--commit`
+- Pytest coverage for parser, validator, upsert, API, and command flows
 
-### Frontend (this ticket)
-- `AttemptCompletionPage` at `/attempts/:attemptId/complete`
-- `getAttemptReview` API client mapping backend `disclosure_mode` → `disclosure`
-- `ScoreSummary` and `QuestionReviewList` presentation components
-- Disclosure-aware UI for withheld, score-only, and score-and-feedback modes
-- Vitest coverage for all three disclosure modes and incomplete-attempt errors
+### Frontend (completed)
+- `ImportPage` at `/questions/import` with template download, upload, preview, and commit sections
+- API client helpers in `frontend/src/api/questionImport.ts`
+- Preview table with pagination (25 rows/page, capped at 200 rows total)
+- UI states: idle, parsing, parsed_with_errors, parsed_ready, committing, committed
+- Error-only preview filter, dismissible network alerts, accessible labels/headings
+- Vitest coverage for API client and `ImportPage` flows
+- “Import questions” entry point on the question bank list page
 
 ### Out of scope
-- Dedicated `Attempt` Django model (serializer includes TODO for future import)
-- Test runner submission → completion navigation (TODO left in `Completion.tsx`)
-- Audit logging on review access
+- Examiner-only authorization on import API (backend temporarily allows any authenticated user)
+- Image import via spreadsheet
+- Import audit logging
 
 ## Key Implementation Decisions
 
 ### Backend
-1. **Attempt record source**: `ReleaseControl` is the authoritative record for attempt ownership, release state, and disclosure level until a dedicated Attempt model exists.
-2. **Disclosure mapping**: `ReleaseControl.disclosure` maps to review modes — `summary` → `SCORE_ONLY`, `detailed` → `SCORE_AND_FEEDBACK`; unreleased attempts always return `WITHHOLD_UNTIL_RELEASE`.
-3. **Payload assembly**: `serialize_attempt_for_review` builds payloads from `CombinedResult`, `ObjectiveScore`, and `FreeTextQueueItem`/`ManualGrade` data.
-4. **Permissions**: `IsAttemptOwnerOrStaff` allows attempt owners plus Django staff and coordinator/system-admin roles.
-5. **Filtering**: `filter_attempt_payload` strips `summary`/`items` when withheld and removes per-item `feedback` in `SCORE_ONLY` mode.
+1. **Template columns**: Flat spreadsheet columns with JSON-encoded `metadata`, `options`, and `blank_answer_keys`.
+2. **Upsert key**: Optional `id` (UUID). Blank `id` creates; populated `id` updates after existence check.
+3. **Two-step API**: `POST /parse` returns `valid_rows` and per-row `errors`; `POST /commit` re-validates and upserts in a transaction.
+4. **Query parameter naming**: Template download uses `file_format` (legacy `format` also supported) because DRF reserves `?format=` for content negotiation.
 
 ### Frontend
-1. **API normalization**: `getAttemptReview` exposes a `disclosure` field, mapping the backend's `disclosure_mode` response key.
-2. **Route guard**: `ProtectedRoute` wraps the completion page (authenticated candidates only).
-3. **WITHHOLD_UNTIL_RELEASE**: Shows "Results will be available once released"; hides score summary and question list.
-4. **SCORE_ONLY**: Renders `ScoreSummary` and `QuestionReviewList` without correctness or feedback columns.
-5. **SCORE_AND_FEEDBACK**: Renders full question table with correctness badges and grader feedback.
-6. **Incomplete attempts**: HTTP 400/409 responses show a "Not available yet" panel (test runner redirect deferred).
+1. **Route guard**: `/questions/import` uses `withExaminerGuard`, matching other question-bank pages.
+2. **Template download**: `downloadTemplate` + `triggerTemplateDownload` use `fetch` → `Blob` → `URL.createObjectURL`.
+3. **Commit mapping**: Backend `created` is exposed to the UI as `inserted` in `commitRows`.
+4. **Preview cap**: Only the first 200 parsed rows render in the preview table to keep the page responsive.
+5. **Commit gating**: Commit button stays disabled until `error_count === 0` and at least one valid row exists.
 
 ## API Endpoints
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/attempts/<attempt_id>/review/` | GET | Owner or staff | Filtered attempt review payload |
+| `/api/question-import/template` | GET | Authenticated | Download CSV/XLSX template (`?file_format=xlsx`) |
+| `/api/question-import/parse` | POST | Authenticated | Upload spreadsheet; returns validation summary |
+| `/api/question-import/commit` | POST | Authenticated | Commit validated `rows` JSON payload |
 
 ## Frontend Routes
 
 | Route | Component | Guard |
 |-------|-----------|-------|
-| `/attempts/:attemptId/complete` | `AttemptCompletionPage` | `ProtectedRoute` (authenticated) |
+| `/questions/import` | `ImportPage` | `withExaminerGuard` |
 
 ## Files Changed
 
 ### Backend
 | File | Why |
 |------|-----|
-| `backend/src/results/view_policies/**` | Disclosure mode logic and payload filtering |
-| `backend/src/results/serializers/attempt_review.py` | Attempt review payload serializer |
-| `backend/src/results/tests/test_view_policies.py` | Unit tests for disclosure policies |
-| `backend/src/core/permissions/attempt_permissions.py` | `IsAttemptOwnerOrStaff` permission |
-| `backend/src/core/views/attempt_review.py` | DRF review endpoint |
-| `backend/src/core/tests/test_attempt_review_api.py` | API integration tests |
+| `backend/requirements.txt` | Added `openpyxl` |
+| `backend/src/question_bank/importers/*` | Template, parser, validator, upsert |
+| `backend/src/question_bank/views/import_api.py` | Import endpoints |
+| `backend/src/question_bank/management/commands/import_questions.py` | CLI import |
 | `backend/src/core/urls.py` | Route registration |
+| `backend/src/question_bank/tests/test_importer.py` | Backend importer tests |
 
 ### Frontend
 | File | Why |
 |------|-----|
-| `frontend/src/pages/attempts/api.ts` | `getAttemptReview` client and types |
-| `frontend/src/pages/attempts/Completion.tsx` | Main completion page with disclosure logic |
-| `frontend/src/pages/attempts/components/ScoreSummary.tsx` | Score and pass/fail display |
-| `frontend/src/pages/attempts/components/QuestionReviewList.tsx` | Mode-aware question table |
-| `frontend/src/pages/attempts/attempts.css` | Page styles |
-| `frontend/src/pages/attempts/index.ts` | Barrel export |
-| `frontend/src/pages/attempts/__tests__/Completion.test.tsx` | Component tests for all modes |
-| `frontend/src/pages/attempts/__tests__/api.test.ts` | API client normalization test |
+| `frontend/src/api/questionImport.ts` | Import API client |
+| `frontend/src/api/questionImport.test.ts` | API client tests |
+| `frontend/src/pages/questions/import/ImportPage.tsx` | Import UI |
+| `frontend/src/pages/questions/import/ImportPage.test.tsx` | Component tests |
+| `frontend/src/pages/questions/import/import.css` | Import page styles |
 | `frontend/src/App.tsx` | Route registration |
+| `frontend/src/pages/questions/QuestionsList.tsx` | Link to import page |
+| `frontend/src/pages/questions/index.ts` | Export `ImportPage` |
 
 ## Verification
 
@@ -98,11 +100,11 @@ npm run lint
 npm run build
 ```
 
-Results: **187** backend tests passed; **124** frontend tests passed; build succeeds.
+Results: **209** backend tests passed; **132** frontend tests passed; build succeeds.
 
 ## Open Questions / Follow-ups
 
-- Introduce a first-class `Attempt` model and replace `ReleaseControl`-based record lookup
-- Wire test runner submission to navigate to `/attempts/:attemptId/complete`
-- Decide whether staff should bypass disclosure filtering on unreleased attempts (currently they receive withheld payloads)
-- Add audit logging when candidates view attempt reviews
+- Restrict import endpoints to Examiner/System Admin once role feature [3] is available
+- Support importing question images (URL column or post-import upload workflow)
+- Add import audit logging and duplicate-detection beyond UUID upsert
+- Surface row-level commit failures inline if backend begins returning partial commit errors

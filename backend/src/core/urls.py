@@ -21,6 +21,11 @@ from rest_framework.routers import DefaultRouter
 from core.views import test_audit_log
 from core.views.assignments import AssignmentViewSet
 from core.views.attempt_review import AttemptReviewView
+from question_bank.views.import_api import (
+    commit_import,
+    download_template,
+    parse_import,
+)
 
 assignments_router = DefaultRouter()
 assignments_router.register(
@@ -88,6 +93,21 @@ urlpatterns = [
 
     # Question bank
     path('api/question-bank/', include('question_bank.urls')),
+    path(
+        'api/question-import/template',
+        download_template,
+        name='question_import_template',
+    ),
+    path(
+        'api/question-import/parse',
+        parse_import,
+        name='question_import_parse',
+    ),
+    path(
+        'api/question-import/commit',
+        commit_import,
+        name='question_import_commit',
+    ),
 
     # Results release and candidate visibility
     path('api/results/', include('results.urls')),
