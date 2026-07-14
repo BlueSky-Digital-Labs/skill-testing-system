@@ -1,58 +1,76 @@
-# Task Context: Deterministic Attempt Shuffle Seeds
+# Task Context: Delivery / Attempt Backend
 
-**Branch:** `sunset/task/feat-f69d79e6` (also `sunset/task/attempt-shuffle-seeds`)  
+**Branch:** `sunset/task/feat-f69d79e6`  
 **PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/21
 
 ## Scope
 
-Add deterministic per-attempt randomization for question and option delivery order using persisted shuffle seeds. This enables consistent exam presentation across resume flows while still supporting assignment-level shuffle toggles.
+Implement the Django delivery app so candidates can start, autosave, resume, and submit test attempts with server-side timing, integrity rules, and deterministic question/option ordering.
 
 ### In scope
 
-- `delivery.shuffle` module with `stable_shuffle`, `derive_seed`, and `build_order`
-- `Attempt` model fields for seeds and persisted orders
-- `initialize_attempt_order` / `rehydrate_attempt_order` integration hooks
-- Idempotent initialization and read-only guards on order fields after persistence
-- Unit tests for shuffle service and attempt randomization service
+- `delivery` Django app with `Attempt` and `AttemptAnswer` models
+- REST APIs under `/api/attempts/` (start, save, resume, submit)
+- Attempt lifecycle services (eligibility, timing, shuffle integration, idempotency)
+- `auto_submit_due_attempts` management command
+- Tests for APIs, services, shuffle randomization, and auto-submit
 
 ### Out of scope / deferred
 
-- Wiring `initialize_attempt_order` into a start-attempt API endpoint (no delivery start flow exists yet)
-- Frontend consumption of persisted order fields
-- Backfill migration for historical attempts without seeds
+- Frontend wiring for delivery endpoints
+- Grading pipeline integration on submit (objective scoring still separate)
+- Dedicated `Test` model / composition API for question selection (uses `metadata.test_id` tagging)
+- Celery beat scheduling for auto-submit (command is ready for cron/beat)
 
 ## Key Implementation Decisions
 
-1. **Namespace-derived seeds** — A single `secrets.randbits(64)` base seed is hashed into separate question (`"q"`) and option (`"o"`) seeds via SHA-256. Derived seeds use signed 64-bit integers for SQLite/PostgreSQL `BigIntegerField` compatibility.
-2. **Per-question option shuffling** — Option order for each question derives `derive_seed(option_order_seed, question_id)` so option permutations are independent but reproducible.
-3. **Persisted orders + seeds** — Both seeds and computed orders are stored on `Attempt` so resume flows can read orders directly without recomputation; `rehydrate_attempt_order` can rebuild from seeds for legacy records missing persisted lists.
-4. **Idempotency** — `initialize_attempt_order` returns early when seeds or orders are already set; `Attempt.save()` blocks mutation of order/seed fields once initialized.
-5. **Delivery package is a plain module** — `delivery` is not registered as a Django app; it is imported via `pythonpath = src` like other internal packages.
+1. **Attempt ownership moved to `delivery` app** — `Attempt`/`AttemptAnswer` live in `delivery.models`; core migration `0004_remove_attempt` drops the interim `core_attempt` table from the earlier shuffle-seed spike.
+2. **Server-side timing** — `time_limit_seconds` and `expires_at` are set at start from assignment window (capped at 3600s). `remaining_time_seconds` is computed on every payload; expired attempts return HTTP 410.
+3. **Shuffle integration** — `start_attempt` calls `initialize_attempt_order` using assignment shuffle flags; resume uses `rehydrate_attempt_order` for stable order reproduction.
+4. **Question resolution** — Questions tagged with `metadata.test_id` matching the assignment's `test_id`; falls back to all questions when none are tagged (supports demo/dev).
+5. **Integrity rules** — Ownership checks, terminal-state guards, answer upserts scoped to `question_id_order`, `select_for_update` on writes, idempotent start for in-progress attempts.
+6. **Auto-submit** — Management command marks overdue in-progress attempts as `auto_submitted`.
 
 ## Files Changed
 
 | File | Why |
 |------|-----|
-| `backend/src/delivery/__init__.py` | Package root for delivery helpers |
-| `backend/src/delivery/shuffle/__init__.py` | Public shuffle API exports |
-| `backend/src/delivery/shuffle/service.py` | Deterministic shuffle, seed derivation, order building |
-| `backend/src/delivery/tests/__init__.py` | Test package marker |
-| `backend/src/delivery/tests/test_shuffle_service.py` | Shuffle determinism and flag behavior tests |
-| `backend/src/core/models/attempts.py` | `Attempt` model with shuffle/order fields and read-only guards |
-| `backend/src/core/models/__init__.py` | Export `Attempt` and `AttemptStatus` |
-| `backend/src/core/migrations/0003_attempt_shuffle_orders.py` | Database migration for `Attempt` |
-| `backend/src/core/services/attempt_randomization.py` | Initialize/rehydrate hooks for attempt ordering |
-| `backend/src/core/tests/test_attempt_randomization.py` | Integration tests for randomization service |
+| `backend/src/delivery/apps.py` | Register delivery Django app |
+| `backend/src/delivery/models.py` | `Attempt` and `AttemptAnswer` models |
+| `backend/src/delivery/migrations/0001_initial.py` | Initial delivery tables |
+| `backend/src/core/migrations/0004_remove_attempt.py` | Remove interim core Attempt model |
+| `backend/src/delivery/services/attempts.py` | Start/save/resume/submit lifecycle logic |
+| `backend/src/delivery/services/randomization.py` | Shuffle seed persistence (moved from core) |
+| `backend/src/delivery/serializers.py` | API input serializers |
+| `backend/src/delivery/views.py` | REST endpoints |
+| `backend/src/delivery/urls.py` | `/api/attempts/` routing |
+| `backend/src/delivery/management/commands/auto_submit_due_attempts.py` | Auto-submit command |
+| `backend/src/delivery/tests/test_attempt_api.py` | API integration tests |
+| `backend/src/delivery/tests/test_attempt_randomization.py` | Randomization service tests |
+| `backend/src/core/settings/base.py` | Register delivery app + OpenAPI tag |
+| `backend/src/core/urls.py` | Mount delivery URLs |
+| `backend/src/core/models/__init__.py` | Remove Attempt export from core |
+| `backend/src/core/permissions/attempt_permissions.py` | Support `candidate_id` alias |
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/attempts/start/` | Start or resume in-progress attempt |
+| PUT | `/api/attempts/{id}/save` | Autosave answers (idempotent upsert) |
+| GET | `/api/attempts/{id}/resume` | Resume payload with timing + order |
+| POST | `/api/attempts/{id}/submit` | Submit attempt |
 
 ## Verification
 
 ```bash
 cd backend && SECRET_KEY=test-secret-key python3 -m pytest -q
-python3 -m flake8 src/delivery src/core/models/attempts.py src/core/services/attempt_randomization.py
+python3 -m flake8 src/delivery
 ```
 
 ## Open Questions / Follow-ups
 
-- Call `initialize_attempt_order` from the future start-attempt view/service once question selection is implemented
-- Expose `question_id_order` / `option_id_orders` in attempt delivery serializers for the frontend
-- Consider admin registration for `Attempt` when attempt management UI is added
+- Schedule `auto_submit_due_attempts` via Celery beat or external cron
+- Trigger grading aggregation automatically on submit
+- Replace question `metadata.test_id` tagging with a formal test composition model
+- Wire frontend attempt player to new delivery APIs

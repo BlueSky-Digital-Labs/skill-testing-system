@@ -12,9 +12,8 @@ from __future__ import annotations
 import secrets
 from typing import TypedDict
 
+from delivery.models import Attempt
 from delivery.shuffle import build_order, build_order_from_seeds
-
-from core.models import Attempt
 
 
 class AttemptOrder(TypedDict):

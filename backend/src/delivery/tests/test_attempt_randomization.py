@@ -8,8 +8,9 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from core.models import Assignment, AssignmentStatus, Attempt
-from core.services.attempt_randomization import (
+from core.models import Assignment, AssignmentStatus
+from delivery.models import Attempt
+from delivery.services.randomization import (
     initialize_attempt_order,
     rehydrate_attempt_order,
 )
@@ -42,9 +43,13 @@ def candidate(db):
 
 @pytest.fixture
 def attempt(assignment, candidate):
+    now = timezone.now()
     return Attempt.objects.create(
         assignment=assignment,
-        candidate_user_id=candidate.id,
+        candidate_id=candidate.id,
+        test_id=assignment.test_id,
+        time_limit_seconds=3600,
+        expires_at=now + timedelta(hours=1),
     )
 
 
@@ -145,8 +150,6 @@ def test_rehydrate_attempt_order_recomputes_from_legacy_seeds(attempt):
     expected_question_order = list(attempt.question_id_order)
     expected_option_orders = dict(attempt.option_id_orders)
 
-    attempt.question_id_order = []
-    attempt.option_id_orders = {}
     Attempt.objects.filter(pk=attempt.pk).update(
         question_id_order=[],
         option_id_orders={},

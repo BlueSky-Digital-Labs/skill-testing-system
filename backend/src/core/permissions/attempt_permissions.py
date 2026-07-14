@@ -9,8 +9,8 @@ from rest_framework.permissions import BasePermission
 
 def _candidate_user_id(obj):
     if isinstance(obj, dict):
-        return obj.get('candidate_user_id')
-    return getattr(obj, 'candidate_user_id', None)
+        return obj.get('candidate_user_id') or obj.get('candidate_id')
+    return getattr(obj, 'candidate_user_id', None) or getattr(obj, 'candidate_id', None)
 
 
 class IsAttemptOwnerOrStaff(BasePermission):
