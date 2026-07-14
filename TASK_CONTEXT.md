@@ -1,110 +1,70 @@
-# Task Context: CSV/XLSX Question Import (Backend + Frontend)
+# Task Context: Question Versioning (Backend)
 
-**Branch:** `sunset/task/feat-287d700b`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/15
+**Branch:** `sunset/task/25-24e719fa`  
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/16
 
 ## Scope
 
-Bulk import questions from CSV/XLSX spreadsheets into the Django question bank, with an examiner-facing import UI.
+Implement version control for questions in the Django question bank so historical integrity is preserved via immutable version snapshots.
 
-### Backend (completed)
-- Downloadable import templates (CSV default, XLSX via `file_format=xlsx`)
-- Two-step import API: parse/validate, then commit
-- Spreadsheet parser for CSV and XLSX (`openpyxl`)
-- Row validator aligned with existing question-type rules
-- Transactional bulk upsert (create new rows; update when `id` matches an existing question)
-- `import_questions` management command with dry-run and `--commit`
-- Pytest coverage for parser, validator, upsert, API, and command flows
+### In scope (completed)
+- `QuestionVersion` model with snapshot fields and `sha256` content hash
+- Versioning services: `compute_payload_hash`, `get_next_version_number`, `create_snapshot`, `snapshot_many`
+- Idempotent snapshotting when question content hash is unchanged
+- Signal guards to block edits/deletes on questions used in published tests
+- Read-only Django admin for `QuestionVersion`
+- Migration `0002_question_version`
+- Pytest coverage for snapshot creation, version increment, and idempotency
 
-### Frontend (completed)
-- `ImportPage` at `/questions/import` with template download, upload, preview, and commit sections
-- API client helpers in `frontend/src/api/questionImport.ts`
-- Preview table with pagination (25 rows/page, capped at 200 rows total)
-- UI states: idle, parsing, parsed_with_errors, parsed_ready, committing, committed
-- Error-only preview filter, dismissible network alerts, accessible labels/headings
-- Vitest coverage for API client and `ImportPage` flows
-- “Import questions” entry point on the question bank list page
-
-### Out of scope
-- Examiner-only authorization on import API (backend temporarily allows any authenticated user)
-- Image import via spreadsheet
-- Import audit logging
+### Out of scope / deferred
+- Test-bank publishing integration (`is_in_published_test()` is a provisional stub returning `False`)
+- Automatic snapshot hooks on question save/update (callers invoke `create_snapshot` explicitly)
+- API endpoints for listing or retrieving question versions
+- Dedicated `explanation` field on `Question` (snapshots read `metadata.explanation` when present)
 
 ## Key Implementation Decisions
 
-### Backend
-1. **Template columns**: Flat spreadsheet columns with JSON-encoded `metadata`, `options`, and `blank_answer_keys`.
-2. **Upsert key**: Optional `id` (UUID). Blank `id` creates; populated `id` updates after existence check.
-3. **Two-step API**: `POST /parse` returns `valid_rows` and per-row `errors`; `POST /commit` re-validates and upserts in a transaction.
-4. **Query parameter naming**: Template download uses `file_format` (legacy `format` also supported) because DRF reserves `?format=` for content negotiation.
-
-### Frontend
-1. **Route guard**: `/questions/import` uses `withExaminerGuard`, matching other question-bank pages.
-2. **Template download**: `downloadTemplate` + `triggerTemplateDownload` use `fetch` → `Blob` → `URL.createObjectURL`.
-3. **Commit mapping**: Backend `created` is exposed to the UI as `inserted` in `commitRows`.
-4. **Preview cap**: Only the first 200 parsed rows render in the preview table to keep the page responsive.
-5. **Commit gating**: Commit button stays disabled until `error_count === 0` and at least one valid row exists.
-
-## API Endpoints
-
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/api/question-import/template` | GET | Authenticated | Download CSV/XLSX template (`?file_format=xlsx`) |
-| `/api/question-import/parse` | POST | Authenticated | Upload spreadsheet; returns validation summary |
-| `/api/question-import/commit` | POST | Authenticated | Commit validated `rows` JSON payload |
-
-## Frontend Routes
-
-| Route | Component | Guard |
-|-------|-----------|-------|
-| `/questions/import` | `ImportPage` | `withExaminerGuard` |
+1. **Snapshot field names**: Snapshots use `question_type` and `prompt` (mapped from live `Question.type` and `Question.text`) so version records are stable even if live model field names evolve.
+2. **Hash input**: `compute_payload_hash` canonicalizes the full snapshot payload (`subject`, `topic`, `difficulty`, `question_type`, `prompt`, `points`, `image_url`, `explanation`, `options`, `correct_answers`) with sorted JSON keys.
+3. **Idempotency**: `create_snapshot` compares the computed hash to the latest version’s `sha256` and returns that row instead of creating a duplicate.
+4. **Correct answers**: Derived at snapshot time — option values for choice types, blank-answer keys for fill-in-the-blank, empty list for free text.
+5. **Published-test guards**: `pre_save` / `pre_delete` receivers on `Question`, `Option`, and `BlankAnswerKey` raise `ValidationError` when `is_in_published_test()` is true; stubbed to `False` until test-bank code lands.
+6. **Admin**: `QuestionVersionAdmin` is fully read-only (no add/change/delete).
 
 ## Files Changed
 
-### Backend
 | File | Why |
 |------|-----|
-| `backend/requirements.txt` | Added `openpyxl` |
-| `backend/src/question_bank/importers/*` | Template, parser, validator, upsert |
-| `backend/src/question_bank/views/import_api.py` | Import endpoints |
-| `backend/src/question_bank/management/commands/import_questions.py` | CLI import |
-| `backend/src/core/urls.py` | Route registration |
-| `backend/src/question_bank/tests/test_importer.py` | Backend importer tests |
-
-### Frontend
-| File | Why |
-|------|-----|
-| `frontend/src/api/questionImport.ts` | Import API client |
-| `frontend/src/api/questionImport.test.ts` | API client tests |
-| `frontend/src/pages/questions/import/ImportPage.tsx` | Import UI |
-| `frontend/src/pages/questions/import/ImportPage.test.tsx` | Component tests |
-| `frontend/src/pages/questions/import/import.css` | Import page styles |
-| `frontend/src/App.tsx` | Route registration |
-| `frontend/src/pages/questions/QuestionsList.tsx` | Link to import page |
-| `frontend/src/pages/questions/index.ts` | Export `ImportPage` |
+| `backend/src/question_bank/models.py` | Added `QuestionVersion` model |
+| `backend/src/question_bank/services/versioning.py` | Snapshot build/hash/create helpers |
+| `backend/src/question_bank/services/__init__.py` | Services package |
+| `backend/src/question_bank/signals.py` | Published-test edit guards |
+| `backend/src/question_bank/apps.py` | Register signals in `ready()` |
+| `backend/src/question_bank/admin.py` | Read-only `QuestionVersion` admin |
+| `backend/src/question_bank/migrations/0002_question_version.py` | Schema migration |
+| `backend/src/question_bank/tests/test_versioning.py` | Versioning unit tests |
 
 ## Verification
 
 ```bash
-# Backend
 cd backend
 pip install -r requirements.txt
 PYTHONPATH=src SECRET_KEY=test-secret-key DJANGO_SETTINGS_MODULE=core.settings.test \
   python3 -m pytest src/ -v
 
-# Frontend
-cd frontend
-npm ci
-npm test
-npm run lint
-npm run build
+# Lint (question_bank changes)
+pip install flake8 black
+python3 -m flake8 src/question_bank/models.py src/question_bank/admin.py \
+  src/question_bank/apps.py src/question_bank/signals.py \
+  src/question_bank/services/versioning.py src/question_bank/tests/test_versioning.py
+python3 -m black --check src/question_bank/...
 ```
 
-Results: **209** backend tests passed; **132** frontend tests passed; build succeeds.
+Results: **216** backend tests passed (7 new versioning tests).
 
 ## Open Questions / Follow-ups
 
-- Restrict import endpoints to Examiner/System Admin once role feature [3] is available
-- Support importing question images (URL column or post-import upload workflow)
-- Add import audit logging and duplicate-detection beyond UUID upsert
-- Surface row-level commit failures inline if backend begins returning partial commit errors
+- Wire `is_in_published_test()` to the test-bank publishing model when that app lands
+- Decide whether question create/update APIs should auto-call `create_snapshot`
+- Add a first-class `explanation` field on `Question` if product requires it outside `metadata`
+- Expose version history via REST API for exam delivery and audit views
