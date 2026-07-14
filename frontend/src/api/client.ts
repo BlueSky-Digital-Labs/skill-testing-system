@@ -125,5 +125,3 @@ export async function postJson<T>(
 
   return parseResponse<T>(response, fallbackMessage)
 }
-
-export { authorizedFetch } from './http'
