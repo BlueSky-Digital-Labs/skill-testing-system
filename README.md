@@ -568,6 +568,9 @@ make restore BACKUP_FILE=backup_prod_20231201_120000.sql ENV=prod
 | `/api/auth/token/refresh/` | POST | Refresh an access token |
 | `/api/auth/password/forgot/` | POST | Request a password reset email |
 | `/api/auth/password/reset/` | POST | Reset password with token |
+| `/api/auth/self-register/` | POST | Candidate self-registration (when enabled) |
+| `/api/auth/invitations/issue/` | POST | Issue an email invitation (coordinator or system admin) |
+| `/api/auth/invitations/accept/` | POST | Accept an invitation and obtain JWT tokens |
 
 #### Authentication Environment Variables
 
@@ -575,7 +578,15 @@ make restore BACKUP_FILE=backup_prod_20231201_120000.sql ENV=prod
 |----------|-------------|---------|
 | `EMAIL_BACKEND` | Django email backend | `django.core.mail.backends.console.EmailBackend` |
 | `DEFAULT_FROM_EMAIL` | Outbound email sender | `no-reply@example.test` |
-| `FRONTEND_URL` | Base URL for password reset links in emails | — |
+| `FRONTEND_URL` | Base URL for password reset and invitation links in emails | — |
+| `ALLOW_SELF_REGISTRATION` | Enable public candidate self-registration | `false` |
+
+#### Onboarding Email Behavior
+
+- **Password reset**: Sends a link to `{FRONTEND_URL}/reset-password?token=<token>`.
+- **Invitations**: Sends a link to `{FRONTEND_URL}/accept-invitation?token=<token>`.
+- Re-issuing a pending invitation for the same email invalidates the previous token.
+- Invitation emails are sent synchronously via Django's `send_mail` using `DEFAULT_FROM_EMAIL`.
 
 #### UAT
 - Moderate security for testing

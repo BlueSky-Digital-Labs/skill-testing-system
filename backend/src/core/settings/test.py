@@ -23,6 +23,7 @@ PASSWORD_HASHERS = [
 
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 FRONTEND_URL = 'http://localhost:3000'
+ALLOW_SELF_REGISTRATION = True
 MEDIA_ROOT = BASE_DIR / 'test_media'
 
 DEBUG = True

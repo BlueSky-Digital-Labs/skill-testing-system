@@ -14,14 +14,16 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView as SimpleJWTTokenRefreshView,
     TokenVerifyView,
 )
+from django.conf import settings
 from django.contrib.auth import login
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
-from drf_spectacular.openapi import OpenApiTypes
 
 from core.permissions import IsSystemAdmin
+from core.permissions.assignment_permissions import IsCoordinatorOrAdmin
 
 from .models import Role, RoleKey, User, UserRole
+from .invitations import create_invitation, send_invitation_email
 from .password_reset import create_password_reset_token, send_password_reset_email
 from .serializers import (
     UserRegistrationSerializer,
@@ -35,6 +37,9 @@ from .serializers import (
     RoleSerializer,
     UserSerializer,
     UserRoleAssignSerializer,
+    SelfRegistrationSerializer,
+    InvitationIssueSerializer,
+    InvitationAcceptSerializer,
 )
 from .utils import get_active_system_admin_count, user_has_role
 
@@ -446,6 +451,117 @@ class PasswordResetConfirmView(APIView):
             reset_token.used_at = timezone.now()
             reset_token.save(update_fields=['used_at'])
             return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='Candidate self-registration',
+    description=(
+        'Register a new candidate account when self-registration is enabled. '
+        'Assigns the CANDIDATE role automatically.'
+    ),
+    request=SelfRegistrationSerializer,
+    responses={
+        201: OpenApiResponse(response=TokenResponseSerializer),
+        403: OpenApiResponse(response=ErrorResponseSerializer),
+        400: OpenApiResponse(response=ErrorResponseSerializer),
+    },
+)
+class SelfRegistrationView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        if not getattr(settings, 'ALLOW_SELF_REGISTRATION', False):
+            return Response(
+                {'detail': 'Self-registration is not enabled.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = SelfRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    'user': UserProfileSerializer(user).data,
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='Issue an invitation',
+    description=(
+        'Create and email an invitation link. '
+        'Available to system administrators and coordinators.'
+    ),
+    request=InvitationIssueSerializer,
+    responses={
+        201: OpenApiResponse(description='Invitation created and email sent'),
+        403: OpenApiResponse(response=ErrorResponseSerializer),
+        400: OpenApiResponse(response=ErrorResponseSerializer),
+    },
+)
+class InvitationIssueView(APIView):
+    permission_classes = [IsCoordinatorOrAdmin]
+
+    def post(self, request, *args, **kwargs):
+        serializer = InvitationIssueSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        if serializer.is_valid():
+            invitation = create_invitation(
+                email=serializer.validated_data['email'],
+                role_key=serializer.validated_data['role_key'],
+                created_by=request.user,
+            )
+            send_invitation_email(invitation)
+            return Response(
+                {
+                    'id': str(invitation.id),
+                    'email': invitation.email,
+                    'role_key': invitation.role_key,
+                    'expires_at': invitation.expires_at,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=['Authentication'],
+    summary='Accept an invitation',
+    description=(
+        'Accept an invitation token, create or update the user account, '
+        'assign the invited role, and return JWT tokens.'
+    ),
+    request=InvitationAcceptSerializer,
+    responses={
+        200: OpenApiResponse(response=TokenResponseSerializer),
+        400: OpenApiResponse(response=ErrorResponseSerializer),
+    },
+)
+class InvitationAcceptView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = InvitationAcceptSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    'user': UserProfileSerializer(user).data,
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                },
+                status=status.HTTP_200_OK,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

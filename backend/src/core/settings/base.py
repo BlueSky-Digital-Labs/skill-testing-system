@@ -228,6 +228,7 @@ EMAIL_BACKEND = env(
 )
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='no-reply@example.test')
 FRONTEND_URL = env('FRONTEND_URL', default=None)
+ALLOW_SELF_REGISTRATION = env.bool('ALLOW_SELF_REGISTRATION', default=False)
 
 # Celery Configuration
 CELERY_TIMEZONE = TIME_ZONE

@@ -1,7 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { RootState } from '@store/index'
-import { LoginPage, RegisterPage, SignIn, ForgotPassword, ResetPassword } from '@pages/auth'
+import { LoginPage, SignIn, ForgotPassword, ResetPassword } from '@pages/auth'
+import { SelfRegister, AcceptInvite } from '@pages/candidates'
 import { DashboardPage } from '@pages/dashboard'
 import { BrandingPage } from '@pages/admin/branding'
 import { AuditPage } from '@pages/admin/audit'
@@ -20,7 +21,9 @@ function App() {
       {/* Default route - Login page */}
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/register" element={<SelfRegister />} />
+      <Route path="/accept-invite" element={<AcceptInvite />} />
+      <Route path="/accept-invitation" element={<AcceptInvite />} />
 
       {/* New auth flow */}
       <Route path="/auth/sign-in" element={<SignIn />} />
