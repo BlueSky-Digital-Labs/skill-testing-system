@@ -1,74 +1,61 @@
-# Task Context: Backend Role and User Management (sunset/task/9-24e719fa)
+# Task Context: Frontend Test Assignment UI (Task #13 / sunset/task/feat-frontend-assign)
 
 ## Scope
 
-Implement administrative user and role management in the Django/DRF backend:
+Implement a coordinator-facing React UI for assigning tests to users and groups:
 
-- `Role` and `UserRole` models with migrations and default role seed data
-- Admin CRUD APIs at `/api/admin/roles/` and `/api/admin/users/`
-- `IsSystemAdmin` and `HasAnyRole` permission classes
-- Role assignment/removal endpoints and business-rule enforcement
-- Pytest coverage for roles, assignments, deactivation, and permissions
+- Route `/tests/:testId/assign` rendering `TestAssignPage`
+- Assignment form with datetime windows, attempt limits, shuffle toggles, and comma-separated user/group UUID entry
+- Page-local API client for bulk assignment creation and filtered listing
+- Assignments table with state/status filters
+- React Testing Library coverage for submission, validation, filtering, and partial failure feedback
 
 ## Key Implementation Decisions
 
-1. **Role-based access**: System administration is gated by the `SYSTEM_ADMIN` role (not Django `is_staff` alone). `user_has_role()` checks active user + active role assignment.
-2. **URL layout**: Admin APIs live under `/api/admin/` (via `authentication.urls`) to avoid clashing with Django's `/admin/` site. Existing read-only user listing remains at `/api/auth/users/` as `AuthUserViewSet`.
-3. **User profile fields**: Added optional `first_name` and `last_name` on `User` so `UserSerializer` can expose full admin user records.
-4. **Business rules**:
-   - `SYSTEM_ADMIN` role cannot be deactivated or deleted
-   - Cannot deactivate/delete the last active system administrator
-   - Cannot assign inactive roles
-   - User delete is implemented as soft deactivation (`is_active=False`)
-5. **Seed data**: Migration `0004_seed_default_roles` idempotently seeds `SYSTEM_ADMIN`, `EXAMINER`, `COORDINATOR`, and `CANDIDATE`.
-6. **Testing**: Added `pytest.ini` and `test_roles.py`; full suite runs with `pytest` from `backend/`.
+1. **Route guard**: Uses `ProtectedRoute` (not `AdminRoute`) because coordinators may not pass staff/branding checks; the backend assignments API enforces `COORDINATOR` / `SYSTEM_ADMIN` roles.
+2. **Bulk creation**: `postBulkAssignments()` fans out to one `POST /api/assignments/` per assignee, chunked in batches of 25 with per-assignee error collection and a summary message when partial failures occur.
+3. **Same-origin API**: Uses existing `authorizedFetch` + `getApiBase()` (`/api` relative path) — no absolute URLs.
+4. **Datetime UX**: `datetime-local` inputs convert to ISO via `Date.toISOString()`; `dueAt` / `closesAt` stay disabled until `opensAt` is set and receive +1 / +2 day suggestions when opens changes.
+5. **Validation**: Client-side checks for at least one assignee, UUID format, temporal ordering (`opensAt <= dueAt <= closesAt`), and `maxAttempts >= 1` in `validation.ts`.
+6. **Feedback ordering**: Submit success/error messages are applied after list refresh so `loadAssignments()` does not clear partial-failure errors.
 
 ## Files Changed
 
 | File | Why |
 |------|-----|
-| `backend/src/authentication/models.py` | `Role`, `UserRole`, `RoleKey`; `first_name`/`last_name` on `User` |
-| `backend/src/authentication/migrations/0003_*.py` | Schema migration |
-| `backend/src/authentication/migrations/0004_seed_default_roles.py` | Default role seed data |
-| `backend/src/authentication/serializers.py` | `RoleSerializer`, `UserSerializer`, `UserRoleAssignSerializer` |
-| `backend/src/authentication/views.py` | `RoleViewSet`, admin `UserViewSet`; renamed existing to `AuthUserViewSet` |
-| `backend/src/authentication/urls.py` | Admin router for roles/users |
-| `backend/src/authentication/utils.py` | `user_has_role`, `get_active_system_admin_count` |
-| `backend/src/authentication/admin.py` | Django admin for `Role` / `UserRole` |
-| `backend/src/authentication/tests/test_roles.py` | Role/user management tests |
-| `backend/src/core/permissions.py` | `IsSystemAdmin`, `HasAnyRole` |
-| `backend/src/core/settings/base.py` | OpenAPI tags for admin endpoints |
-| `backend/pytest.ini` | Pytest configuration |
-| `backend/.flake8` | Lint config (excludes migrations) |
+| `frontend/src/pages/tests/assign/index.tsx` | `TestAssignPage` — wires form, table, and API |
+| `frontend/src/pages/tests/assign/AssignForm.tsx` | Assignment creation form |
+| `frontend/src/pages/tests/assign/AssignmentsTable.tsx` | Filterable assignments table |
+| `frontend/src/pages/tests/assign/api.ts` | `postBulkAssignments`, `listAssignments` |
+| `frontend/src/pages/tests/assign/validation.ts` | Form validation helpers |
+| `frontend/src/pages/tests/assign/TestAssignPage.css` | Page styling |
+| `frontend/src/pages/tests/assign/__tests__/TestAssignPage.test.tsx` | RTL tests |
+| `frontend/src/App.tsx` | Registered `/tests/:testId/assign` route |
 
-## API Endpoints
+## API Integration
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/api/admin/roles/` | GET, POST | SYSTEM_ADMIN | List/create roles |
-| `/api/admin/roles/{id}/` | GET, PUT, PATCH, DELETE | SYSTEM_ADMIN | Role detail/update/delete |
-| `/api/admin/users/` | GET, POST | SYSTEM_ADMIN | List/create users |
-| `/api/admin/users/{id}/` | GET, PUT, PATCH, DELETE | SYSTEM_ADMIN | User detail/update/soft-delete |
-| `/api/admin/users/{id}/assign-role/` | POST | SYSTEM_ADMIN | Assign role by `role_key` |
-| `/api/admin/users/{id}/remove-role/` | POST | SYSTEM_ADMIN | Remove role by `role_key` |
+| Function | Endpoint | Notes |
+|----------|----------|-------|
+| `listAssignments(params)` | `GET /api/assignments/` | Filters: `test_id`, `state`, `status`, etc. |
+| `postBulkAssignments(payload)` | `POST /api/assignments/` (per assignee) | Chunked; returns `{ created, failed }` |
 
-## Assumptions
-
-- Admin API prefix is `/api/admin/` because `authentication.urls` is mounted at `/api/`.
-- `is_staff` / `is_superuser` remain for Django admin and legacy endpoints; new admin APIs use role-based `SYSTEM_ADMIN`.
-- Initial system administrators must be bootstrapped via Django admin, shell, or management command by assigning the `SYSTEM_ADMIN` role.
+Depends on backend assignments API from PR #8 (`sunset/task/feat-f7d06aea`).
 
 ## Verification
 
 ```bash
-cd backend
-pip install -r requirements.txt
-PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test SECRET_KEY=test-secret pytest
-flake8 src/authentication src/core/permissions.py
+cd frontend
+npm ci
+npm test
+npm run lint
+npm run build
 ```
+
+Navigate to `/tests/<test-uuid>/assign` while authenticated as a coordinator or system admin.
 
 ## Open Questions / Follow-ups
 
-- Bootstrap command to promote the demo/seed user to `SYSTEM_ADMIN` on deploy.
-- Extend role checks to grading/branding endpoints that currently use `IsAdminUser`.
-- Audit logging for role assignment and user deactivation events.
+- Add sidebar navigation link once a test catalog/list page exists.
+- Replace comma-separated UUID inputs with searchable user/group pickers.
+- Dedicated coordinator route guard that probes assignments API instead of generic auth.
+- Surface archive action and pagination in the assignments table.
