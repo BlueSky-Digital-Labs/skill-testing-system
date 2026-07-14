@@ -46,29 +46,30 @@ export const content = {
   dashboard: {
     welcome: {
       title: 'Welcome back',
-      subtitle: 'Here\'s what\'s happening with your projects today'
+      subtitle: 'Here\'s an overview of your skill-testing platform activity'
     },
     cards: {
-      totalProjects: {
-        title: 'Total Projects',
-        description: 'Active projects in progress'
+      questions: {
+        title: 'Questions in bank',
+        description: 'Published and draft questions'
       },
-      completedTasks: {
-        title: 'Completed Tasks',
-        description: 'Tasks finished this month'
+      assignments: {
+        title: 'Test assignments',
+        description: 'Scheduled availability windows'
       },
-      teamMembers: {
-        title: 'Team Members',
-        description: 'Active team members'
+      groups: {
+        title: 'Candidate groups',
+        description: 'Active cohorts for assignments'
       },
-      revenue: {
-        title: 'Revenue',
-        description: 'Total revenue this quarter'
+      gradingQueue: {
+        title: 'Grading queue',
+        description: 'Responses awaiting manual grading'
       }
     },
     recentActivity: {
-      title: 'Recent Activity',
-      noActivity: 'No recent activity to show'
+      title: 'Recent assignments',
+      loading: 'Loading recent assignments...',
+      noActivity: 'No assignments scheduled yet'
     }
   },
 
@@ -76,15 +77,12 @@ export const content = {
   sidebar: {
     menuItems: {
       dashboard: 'Dashboard',
-      jobs: 'Jobs',
-      calendar: 'Calendar',
-      clients: 'Clients',
-      employees: 'Employees',
-      invoicing: 'Invoicing',
-      skillMatrix: 'Skill Matrix',
-      discoverySession: 'Discovery Session',
-      feedback: 'Feedback',
-      settings: 'Settings',
+      questionBank: 'Question bank',
+      assignments: 'Test assignments',
+      candidateGroups: 'Candidate groups',
+      grading: 'Grading',
+      users: 'Users',
+      roles: 'Roles',
       branding: 'Branding',
       auditLog: 'Audit Log'
     },

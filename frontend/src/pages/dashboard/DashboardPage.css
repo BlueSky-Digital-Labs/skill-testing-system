@@ -59,12 +59,38 @@
   margin-bottom: 3rem;
 }
 
-.recent-jobs-section {
+.recent-activity-section,
+.dashboard-quick-links {
   background: white;
   border-radius: 0.75rem;
   padding: 1.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   border: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-quick-links__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.dashboard-quick-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.dashboard-quick-link:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
 }
 
 .section-header {
@@ -84,7 +110,8 @@
   margin: 0;
 }
 
-.jobs-table {
+.jobs-table,
+.activity-table {
   width: 100%;
 }
 
@@ -199,7 +226,8 @@
     color: #94a3b8;
   }
   
-  .recent-jobs-section {
+  .recent-activity-section,
+  .dashboard-quick-links {
     background: #1e293b;
     border-color: #334155;
   }
