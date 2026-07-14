@@ -16,6 +16,8 @@ from drf_spectacular.views import (
 )
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
+from core.views import test_audit_log
+
 
 @extend_schema(
     tags=['Health'],
@@ -55,6 +57,10 @@ urlpatterns = [
 
     # Auto-scoring
     path('api/grading/', include('grading.urls')),
+
+    # Audit logging
+    path('api/audit/', include('audit.urls')),
+    path('api/audit/test-log', test_audit_log, name='audit_test_log'),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
