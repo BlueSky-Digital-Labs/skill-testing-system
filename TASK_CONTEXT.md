@@ -1,67 +1,58 @@
-# Task Context: Full-Stack Feature Integration (Task #41)
+# Task Context: Deterministic Attempt Shuffle Seeds
 
-**Branch:** `sunset/task/41-3385d121`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/20
+**Branch:** `sunset/task/attempt-shuffle-seeds`  
+**PR:** _(pending)_
 
 ## Scope
 
-Integrate implemented frontend features into the skill-testing-system monorepo so the React UI and Django backend work cohesively end-to-end. Replace starter-template boilerplate, wire navigation and routes to real feature pages, connect UI to existing API services, and ensure demo seed data supports integrated flows.
+Add deterministic per-attempt randomization for question and option delivery order using persisted shuffle seeds. This enables consistent exam presentation across resume flows while still supporting assignment-level shuffle toggles.
 
 ### In scope
 
-- Replace demo dashboard (hardcoded jobs/workers data) with role-aware summary cards backed by existing APIs
-- Remove dead sidebar links (`/jobs`, `/calendar`, etc.) and expose skill-testing features (question bank, assignments, groups, grading, admin)
-- Add `/assignments` coordinator route listing test assignments with links to test detail and assign flows
-- Wire `TestDetailPage` to `listAssignments` using route `testId`
-- Extend `seed_demo` with RBAC roles, sample questions, a candidate group, and a demo assignment
-- Frontend/backend tests for new integration surfaces
+- `delivery.shuffle` module with `stable_shuffle`, `derive_seed`, and `build_order`
+- `Attempt` model fields for seeds and persisted orders
+- `initialize_attempt_order` / `rehydrate_attempt_order` integration hooks
+- Idempotent initialization and read-only guards on order fields after persistence
+- Unit tests for shuffle service and attempt randomization service
 
 ### Out of scope / deferred
 
-- Test composition API (no `Test` model yet; question list on test detail remains informational)
-- Consolidating dual auth stacks (`LoginPage` axios vs `SignIn` fetch)
-- Mounting orphaned `Layout` / `Header` / `RegisterPage` components
-- `GroupPicker` adoption in assign form (still uses plain ID fields)
+- Wiring `initialize_attempt_order` into a start-attempt API endpoint (no delivery start flow exists yet)
+- Frontend consumption of persisted order fields
+- Backfill migration for historical attempts without seeds
 
 ## Key Implementation Decisions
 
-1. **Dashboard aggregates existing APIs** — `useDashboardStats` fetches counts from `listQuestions`, `listAssignments`, `listGroupsPaginated`, and `listQueue` based on role probes (`useExaminerAccess`, `useCoordinatorAccess`, `useAdminAccess`). No new backend summary endpoint.
-2. **Assignments hub at `/assignments`** — Coordinator-guarded list page reuses `pages/tests/assign/api.ts` and links to `/tests/:testId` and `/tests/:testId/assign`.
-3. **Test detail shows assignments, not composition** — Backend stores `test_id` as an opaque UUID without question membership; the page loads assignments for the route id and keeps question rendering for tests/props only.
-4. **Seed data uses stable demo test UUID** — `11111111-1111-4111-8111-111111111111` for repeatable assignment links in docs and UI demos.
-5. **Sidebar active-state helper** — `isPathActive` covers nested routes (e.g. `/questions/import` highlights Question bank).
+1. **Namespace-derived seeds** — A single `secrets.randbits(64)` base seed is hashed into separate question (`"q"`) and option (`"o"`) seeds via SHA-256. Derived seeds use signed 64-bit integers for SQLite/PostgreSQL `BigIntegerField` compatibility.
+2. **Per-question option shuffling** — Option order for each question derives `derive_seed(option_order_seed, question_id)` so option permutations are independent but reproducible.
+3. **Persisted orders + seeds** — Both seeds and computed orders are stored on `Attempt` so resume flows can read orders directly without recomputation; `rehydrate_attempt_order` can rebuild from seeds for legacy records missing persisted lists.
+4. **Idempotency** — `initialize_attempt_order` returns early when seeds or orders are already set; `Attempt.save()` blocks mutation of order/seed fields once initialized.
+5. **Delivery package is a plain module** — `delivery` is not registered as a Django app; it is imported via `pythonpath = src` like other internal packages.
 
 ## Files Changed
 
 | File | Why |
 |------|-----|
-| `frontend/src/App.tsx` | Register `/assignments` route with coordinator guard |
-| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Skill-testing navigation; remove template dead links |
-| `frontend/src/content/index.ts` | Dashboard/sidebar copy for assessment domain |
-| `frontend/src/pages/dashboard/DashboardPage.tsx` | Role-aware dashboard with live API stats |
-| `frontend/src/pages/dashboard/DashboardPage.css` | Quick links + recent assignments styling |
-| `frontend/src/pages/dashboard/useDashboardStats.ts` | Dashboard data hook |
-| `frontend/src/pages/dashboard/DashboardPage.test.tsx` | Dashboard integration test |
-| `frontend/src/pages/tests/AssignmentsListPage.tsx` | Coordinator assignments index |
-| `frontend/src/pages/tests/AssignmentsListPage.test.tsx` | Assignments list test |
-| `frontend/src/pages/tests/TestDetailPage.tsx` | Wire to `listAssignments` via route param |
-| `frontend/src/pages/tests/TestDetailPage.test.tsx` | Updated tests for API wiring |
-| `frontend/src/pages/tests/tests.css` | Layout styles for test/assignment pages |
-| `backend/src/authentication/management/commands/seed_demo.py` | Roles, questions, group, assignment seed data |
-| `backend/src/authentication/tests/test_seed_demo.py` | Seed command regression test |
+| `backend/src/delivery/__init__.py` | Package root for delivery helpers |
+| `backend/src/delivery/shuffle/__init__.py` | Public shuffle API exports |
+| `backend/src/delivery/shuffle/service.py` | Deterministic shuffle, seed derivation, order building |
+| `backend/src/delivery/tests/__init__.py` | Test package marker |
+| `backend/src/delivery/tests/test_shuffle_service.py` | Shuffle determinism and flag behavior tests |
+| `backend/src/core/models/attempts.py` | `Attempt` model with shuffle/order fields and read-only guards |
+| `backend/src/core/models/__init__.py` | Export `Attempt` and `AttemptStatus` |
+| `backend/src/core/migrations/0003_attempt_shuffle_orders.py` | Database migration for `Attempt` |
+| `backend/src/core/services/attempt_randomization.py` | Initialize/rehydrate hooks for attempt ordering |
+| `backend/src/core/tests/test_attempt_randomization.py` | Integration tests for randomization service |
 
 ## Verification
 
 ```bash
-# Frontend
-cd frontend && npm ci && npm test && npm run lint && npm run build
-
-# Backend
 cd backend && SECRET_KEY=test-secret-key python3 -m pytest -q
+python3 -m flake8 src/delivery src/core/models/attempts.py src/core/services/attempt_randomization.py
 ```
 
 ## Open Questions / Follow-ups
 
-- Add a dedicated tests index API when the `Test` model lands so test detail can show composition
-- Link grading/results/attempt routes from assignment rows once attempt ids are surfaced in assignment APIs
-- Consider `GroupPicker` in `AssignForm` to replace manual group UUID entry
+- Call `initialize_attempt_order` from the future start-attempt view/service once question selection is implemented
+- Expose `question_id_order` / `option_id_orders` in attempt delivery serializers for the frontend
+- Consider admin registration for `Attempt` when attempt management UI is added
