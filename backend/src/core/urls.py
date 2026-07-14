@@ -21,6 +21,7 @@ from rest_framework.routers import DefaultRouter
 from core.views import test_audit_log
 from core.views.assignments import AssignmentViewSet
 from core.views.attempt_review import AttemptReviewView
+from results.certificates.urls import attempt_urlpatterns, certificate_urlpatterns
 from question_bank.views.import_api import (
     commit_import,
     download_template,
@@ -114,6 +115,10 @@ urlpatterns = [
 
     # Results release and candidate visibility
     path('api/results/', include('results.urls')),
+    path('api/results/', include(attempt_urlpatterns)),
+
+    # Certificate retrieval by ID
+    path('api/certificates/', include(certificate_urlpatterns)),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

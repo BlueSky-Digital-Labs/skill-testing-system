@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Certificate of Achievement</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 2cm;
+    }
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      color: #1f2937;
+      text-align: center;
+    }
+    .border {
+      border: 4px double #2563eb;
+      padding: 48px;
+      min-height: 420px;
+    }
+    h1 {
+      font-size: 32px;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    h2 {
+      font-size: 28px;
+      margin: 24px 0;
+      color: #111827;
+    }
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin: 12px 0;
+    }
+    .meta {
+      margin-top: 32px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="border">
+    <h1>Certificate of Achievement</h1>
+    <p>This certifies that</p>
+    <h2>{{ candidate_name }}</h2>
+    <p>has successfully passed the assessment</p>
+    <p><strong>Score:</strong> {{ total_awarded }} / {{ total_max }}</p>
+    <p><strong>Attempt ID:</strong> {{ attempt_id }}</p>
+    <p><strong>Test ID:</strong> {{ test_id }}</p>
+    <div class="meta">
+      <p>Issued on {{ issued_at|date:"F j, Y" }} (template {{ template_version }})</p>
+    </div>
+  </div>
+</body>
+</html>

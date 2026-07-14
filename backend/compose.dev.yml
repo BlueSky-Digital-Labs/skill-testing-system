@@ -11,6 +11,10 @@ services:
     environment:
       - DJANGO_ENV=dev
       - PYTHONPATH=/app/src
+      - CERTIFICATES_BUCKET=${CERTIFICATES_BUCKET:-certificates-dev}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
     command: python manage.py runserver 0.0.0.0:8000
     stdin_open: true
     tty: true

@@ -1,0 +1,181 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CandidateResultPage > renders summary-only snapshot 1`] = `
+<div>
+  <div>
+    <div
+      class="results-page"
+    >
+      <header
+        class="results-page__header"
+      >
+        <h1>
+          Test Results
+        </h1>
+        <p>
+          Attempt 
+          attempt-1
+        </p>
+      </header>
+      <div
+        class="results-form__actions"
+      >
+        <button
+          class="btn btn--secondary btn--md"
+          type="button"
+        >
+          Refresh
+        </button>
+      </div>
+      <section
+        aria-label="Result summary"
+        class="results-panel"
+      >
+        <div
+          class="results-page__header"
+        >
+          <h2
+            class="results-panel__title"
+          >
+            Your Results
+          </h2>
+          <span
+            class="results-status-badge results-status-badge--released"
+          >
+            Passed
+          </span>
+        </div>
+        <div
+          class="results-summary__totals"
+        >
+          <div
+            class="results-summary__metric"
+          >
+            <strong>
+              8.00
+            </strong>
+            <span>
+              Total Awarded
+            </span>
+          </div>
+          <div
+            class="results-summary__metric"
+          >
+            <strong>
+              10.00
+            </strong>
+            <span>
+              Total Max
+            </span>
+          </div>
+          <div
+            class="results-summary__metric"
+          >
+            <strong>
+              test-1
+            </strong>
+            <span>
+              Test ID
+            </span>
+          </div>
+        </div>
+        <div
+          class="results-table-wrapper"
+        >
+          <table
+            class="results-table"
+          >
+            <thead>
+              <tr>
+                <th>
+                  Topic
+                </th>
+                <th>
+                  Awarded
+                </th>
+                <th>
+                  Max
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  math
+                </td>
+                <td>
+                  8.00
+                </td>
+                <td>
+                  10.00
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section
+        aria-label="Certificate"
+        class="results-panel results-certificate"
+      >
+        <h2
+          class="results-panel__title"
+        >
+          Certificate
+        </h2>
+        <p
+          class="results-empty-state"
+        >
+          No certificate is available for this attempt yet.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`CandidateResultPage > renders withheld state snapshot 1`] = `
+<div>
+  <div>
+    <div
+      class="results-page"
+    >
+      <header
+        class="results-page__header"
+      >
+        <h1>
+          Test Results
+        </h1>
+        <p>
+          Attempt 
+          attempt-1
+        </p>
+      </header>
+      <div
+        class="results-form__actions"
+      >
+        <button
+          class="btn btn--secondary btn--md"
+          type="button"
+        >
+          Refresh
+        </button>
+      </div>
+      <section
+        class="results-panel"
+      >
+        <h2
+          class="results-panel__title"
+        >
+          Results Not Yet Available
+        </h2>
+        <p
+          class="results-empty-state"
+        >
+          Your results have not been released yet. Please check back later.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+`;

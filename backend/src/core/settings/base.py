@@ -49,6 +49,7 @@ LOCAL_APPS = [
     'grading.apps.GradingConfig',
     'question_bank.apps.QuestionBankConfig',
     'results.apps.ResultsConfig',
+    'results.certificates.apps.ResultsCertificatesConfig',
     'delivery.apps.DeliveryConfig',
 ]
 
@@ -194,6 +195,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Candidate Groups', 'description': 'Candidate group membership management'},
         {'name': 'Question Bank', 'description': 'Question bank CRUD and image uploads'},
         {'name': 'Results', 'description': 'Results release gates and candidate visibility'},
+        {'name': 'Certificates', 'description': 'PDF certificate issuance and download'},
         {'name': 'Attempts', 'description': 'Exam attempt delivery, autosave, and submission'},
     ],
 }
@@ -236,6 +238,16 @@ EMAIL_BACKEND = env(
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='no-reply@example.test')
 FRONTEND_URL = env('FRONTEND_URL', default=None)
 ALLOW_SELF_REGISTRATION = env.bool('ALLOW_SELF_REGISTRATION', default=False)
+
+# Certificate storage (S3)
+CERTIFICATES_BUCKET = env('CERTIFICATES_BUCKET', default='')
+AWS_REGION = env('AWS_REGION', default='us-east-1')
+AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
+CERTIFICATE_PRESIGNED_URL_EXPIRES = env.int(
+    'CERTIFICATE_PRESIGNED_URL_EXPIRES',
+    default=3600,
+)
 
 # Celery Configuration
 CELERY_TIMEZONE = TIME_ZONE

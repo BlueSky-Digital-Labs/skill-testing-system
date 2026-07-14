@@ -52,6 +52,9 @@ clean: ## Remove all containers, volumes, and images
 migrate: ## Run database migrations
 	docker compose $(ENV_FILE) $(COMPOSE_FILES) exec web python manage.py migrate
 
+migrate-certificates: ## Run certificate app migrations
+	docker compose $(ENV_FILE) $(COMPOSE_FILES) exec web python manage.py migrate results_certificates
+
 makemigrations: ## Create new database migrations
 	docker compose $(ENV_FILE) $(COMPOSE_FILES) exec web python manage.py makemigrations
 

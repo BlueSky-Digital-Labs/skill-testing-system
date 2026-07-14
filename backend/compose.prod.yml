@@ -8,6 +8,10 @@ services:
       - "8000:8000"
     environment:
       - DJANGO_ENV=prod
+      - CERTIFICATES_BUCKET=${CERTIFICATES_BUCKET}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4 --worker-class sync --timeout 120 --keep-alive 2 --log-level warning --access-logfile - --error-logfile -
     deploy:
       replicas: 2

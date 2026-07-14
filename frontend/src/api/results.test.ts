@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getCandidateResult,
+  getCertificate,
   getReleaseStatus,
+  issueCertificate,
   postRelease,
 } from './results'
 import { clearTokens, setTokens } from './authStorage'
@@ -49,6 +51,17 @@ const sampleCandidateResult = {
       max_points: '5.00',
     },
   ],
+}
+
+const sampleCertificateApi = {
+  id: 'cert-1',
+  attempt_id: 'attempt-1',
+  issued_at: '2026-07-14T00:00:00.000Z',
+  template_version: 'v1',
+  checksum_sha256: 'abc123',
+  revoked_at: null,
+  meta: { candidate_name: 'Jane Candidate' },
+  download_url: 'https://signed.example/cert.pdf',
 }
 
 describe('results API client', () => {
@@ -134,6 +147,58 @@ describe('results API client', () => {
         headers: expect.objectContaining({
           Authorization: 'Bearer access-token',
         }),
+      }),
+    )
+  })
+
+  it('getCertificate returns null on 404', async () => {
+    setTokens('access-token', 'refresh-token')
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 404 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await getCertificate('attempt-1')
+
+    expect(result).toBeNull()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/results/attempt-1/certificate/',
+      expect.any(Object),
+    )
+  })
+
+  it('getCertificate maps download_url to url', async () => {
+    setTokens('access-token', 'refresh-token')
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(sampleCertificateApi), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await getCertificate('attempt-1')
+
+    expect(result?.url).toBe('https://signed.example/cert.pdf')
+    expect(result?.template_version).toBe('v1')
+  })
+
+  it('issueCertificate posts template version', async () => {
+    setTokens('access-token', 'refresh-token')
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(sampleCertificateApi), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await issueCertificate('attempt-1')
+
+    expect(result.id).toBe('cert-1')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/results/attempt-1/certificate/',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ template_version: 'v1' }),
       }),
     )
   })

@@ -2,11 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { CandidateResult } from './CandidateResult'
+import { CandidateResultPage } from './CandidateResultPage'
 import * as resultsApi from '@/api/results'
+
+const showToast = vi.fn()
 
 vi.mock('@components/templates/DashboardLayout', () => ({
   DashboardLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('@components/Toast', () => ({
+  useToast: () => ({ showToast }),
 }))
 
 const summary = {
@@ -23,9 +29,21 @@ const summary = {
   updated_at: '2026-07-14T00:00:00.000Z',
 }
 
-describe('CandidateResult', () => {
+const certificate = {
+  id: 'cert-1',
+  attempt_id: 'attempt-1',
+  issued_at: '2026-07-14T00:00:00.000Z',
+  template_version: 'v1',
+  url: 'https://signed.example/cert.pdf',
+  checksum_sha256: 'abc123',
+  meta: {},
+}
+
+describe('CandidateResultPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    showToast.mockReset()
+    vi.spyOn(resultsApi, 'getCertificate').mockResolvedValue(null)
   })
 
   it('renders withheld state snapshot', async () => {
@@ -40,7 +58,7 @@ describe('CandidateResult', () => {
     const { container } = render(
       <MemoryRouter initialEntries={['/results/attempt-1']}>
         <Routes>
-          <Route path="/results/:attemptId" element={<CandidateResult />} />
+          <Route path="/results/:attemptId" element={<CandidateResultPage />} />
         </Routes>
       </MemoryRouter>,
     )
@@ -62,7 +80,7 @@ describe('CandidateResult', () => {
     const { container } = render(
       <MemoryRouter initialEntries={['/results/attempt-1']}>
         <Routes>
-          <Route path="/results/:attemptId" element={<CandidateResult />} />
+          <Route path="/results/:attemptId" element={<CandidateResultPage />} />
         </Routes>
       </MemoryRouter>,
     )
@@ -72,47 +90,50 @@ describe('CandidateResult', () => {
     expect(container).toMatchSnapshot()
   })
 
-  it('renders detailed snapshot with correctness flags', async () => {
+  it('shows certificate download when available', async () => {
     vi.spyOn(resultsApi, 'getCandidateResult').mockResolvedValue({
       attempt_id: 'attempt-1',
       released: true,
-      disclosure: 'detailed',
+      disclosure: 'summary',
       visibility: 'candidate',
       status: 'released',
       summary,
-      items: [
-        {
-          id: 'item-1',
-          question_id: 'q-1',
-          question_version: 1,
-          question_type: 'mcq',
-          is_correct: true,
-          awarded_points: '5.00',
-          max_points: '5.00',
-        },
-        {
-          id: 'item-2',
-          question_id: 'q-2',
-          question_version: 1,
-          question_type: 'mcq',
-          is_correct: false,
-          awarded_points: '3.00',
-          max_points: '5.00',
-        },
-      ],
     })
+    vi.spyOn(resultsApi, 'getCertificate').mockResolvedValue(certificate)
 
-    const { container } = render(
+    render(
       <MemoryRouter initialEntries={['/results/attempt-1']}>
         <Routes>
-          <Route path="/results/:attemptId" element={<CandidateResult />} />
+          <Route path="/results/:attemptId" element={<CandidateResultPage />} />
         </Routes>
       </MemoryRouter>,
     )
 
-    expect(await screen.findByText('Question Breakdown')).toBeInTheDocument()
-    expect(screen.getByText('Incorrect')).toBeInTheDocument()
-    expect(container).toMatchSnapshot()
+    expect(await screen.findByRole('button', { name: 'Download certificate' })).toBeInTheDocument()
+  })
+
+  it('shows unavailable certificate message on 404', async () => {
+    vi.spyOn(resultsApi, 'getCandidateResult').mockResolvedValue({
+      attempt_id: 'attempt-1',
+      released: true,
+      disclosure: 'summary',
+      visibility: 'candidate',
+      status: 'released',
+      summary,
+    })
+    vi.spyOn(resultsApi, 'getCertificate').mockResolvedValue(null)
+
+    render(
+      <MemoryRouter initialEntries={['/results/attempt-1']}>
+        <Routes>
+          <Route path="/results/:attemptId" element={<CandidateResultPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(
+      await screen.findByText('No certificate is available for this attempt yet.'),
+    ).toBeInTheDocument()
   })
 
   it('refreshes result data when refresh is clicked', async () => {
@@ -130,7 +151,7 @@ describe('CandidateResult', () => {
     render(
       <MemoryRouter initialEntries={['/results/attempt-1']}>
         <Routes>
-          <Route path="/results/:attemptId" element={<CandidateResult />} />
+          <Route path="/results/:attemptId" element={<CandidateResultPage />} />
         </Routes>
       </MemoryRouter>,
     )
