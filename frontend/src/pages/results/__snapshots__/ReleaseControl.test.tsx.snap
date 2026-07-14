@@ -1,0 +1,151 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ReleaseControl > matches snapshot for loaded release form 1`] = `
+<div>
+  <div>
+    <div
+      class="results-page"
+    >
+      <header
+        class="results-page__header"
+      >
+        <h1>
+          Release Results
+        </h1>
+        <p>
+          Configure disclosure and release status for attempt 
+          attempt-1
+          .
+        </p>
+      </header>
+      <form
+        class="results-panel results-form"
+      >
+        <h2
+          class="results-panel__title"
+        >
+          Disclosure Settings
+        </h2>
+        <input
+          name="test_id"
+          readonly=""
+          type="hidden"
+          value="test-1"
+        />
+        <input
+          name="candidate_user_id"
+          readonly=""
+          type="hidden"
+          value="42"
+        />
+        <fieldset
+          class="results-form__field"
+        >
+          <legend
+            class="results-form__label"
+          >
+            Disclosure level
+          </legend>
+          <div
+            class="results-form__options"
+          >
+            <label
+              class="results-form__option"
+            >
+              <input
+                name="disclosure"
+                type="radio"
+                value="none"
+              />
+              <span>
+                <strong>
+                  None
+                </strong>
+                 — 
+                Withhold all score details from the candidate.
+              </span>
+            </label>
+            <label
+              class="results-form__option"
+            >
+              <input
+                checked=""
+                name="disclosure"
+                type="radio"
+                value="summary"
+              />
+              <span>
+                <strong>
+                  Summary
+                </strong>
+                 — 
+                Show pass/fail and aggregate scores only.
+              </span>
+            </label>
+            <label
+              class="results-form__option"
+            >
+              <input
+                name="disclosure"
+                type="radio"
+                value="detailed"
+              />
+              <span>
+                <strong>
+                  Detailed
+                </strong>
+                 — 
+                Include per-question correctness flags.
+              </span>
+            </label>
+          </div>
+        </fieldset>
+        <div
+          class="results-form__field"
+        >
+          <span
+            class="results-form__label"
+          >
+            Release to candidate
+          </span>
+          <label
+            class="results-toggle"
+          >
+            <input
+              type="checkbox"
+            />
+            <span>
+              Not released
+            </span>
+          </label>
+        </div>
+        <p>
+          Current status:
+           
+          <span
+            class="results-status-badge results-status-badge--unreleased"
+          >
+            Unreleased
+          </span>
+        </p>
+        <div
+          class="results-form__actions"
+        >
+          <button
+            class="btn btn--primary btn--md"
+            type="submit"
+          >
+            Save release settings
+          </button>
+          <button
+            class="btn btn--secondary btn--md"
+            type="button"
+          >
+            Refresh
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+`;

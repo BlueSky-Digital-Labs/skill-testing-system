@@ -1,91 +1,80 @@
-# Task Context: Question Bank (Backend + Frontend)
+# Task Context: Results Release Gates & Candidate Visibility (FR-14, FR-26)
 
-**Branch:** `sunset/task/feat-fa5cce9f`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/12
+**Branch:** `sunset/task/feat-1b924124`  
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/13
 
 ## Scope
 
-End-to-end **Question Bank** for examiners/system admins to author and manage assessment questions with type-specific validation and optional image uploads.
+End-to-end **results release gates** and **candidate visibility enforcement** (FR-14, FR-26). Staff control when attempt results are released and at what disclosure level; candidates only see their own released results.
 
 ### Backend (completed)
-- `question_bank` Django app with `Question`, `Option`, `BlankAnswerKey` models
-- REST API at `/api/question-bank/questions/` with filtering and image upload
-- `IsExaminerOrAdmin` write permissions; authenticated read access
-- Django admin, initial migration, pytest coverage (18 tests)
+- `results` Django app with `ReleaseControl` model
+- Service helpers: `mark_release`, `get_candidate_view`, `get_release_status`
+- REST API at `/api/results/` integrated with `CombinedResult` and `ObjectiveScore`
+- 23 pytest tests for release workflow and visibility rules
 
 ### Frontend (this ticket)
-- API client (`frontend/src/api/questionBank.ts`)
-- Types (`frontend/src/types/questionBank.ts`)
-- Examiner-guarded routes: `/questions`, `/questions/new`, `/questions/:id/edit`
-- `QuestionsList` with server-side filters + client-side search
-- `QuestionEditor` with nested type-specific editors, image preview/upload, unsaved-change protection
-- Sidebar navigation for examiner/system-admin users
-- Vitest coverage for API client, utils, and pages
+- API client (`frontend/src/api/results.ts`)
+- Staff page `ReleaseControl` at `/admin/results/release/:attemptId`
+- Candidate page `CandidateResult` at `/results/:attemptId`
+- `useAuth` extended with `isStaff` / `isStaffChecking` (via existing admin access probe)
+- Vitest coverage: API client, submission flow, snapshot tests for disclosure states
 
 ### Out of scope
-- Wiring question bank IDs into grading auto-scoring flows
-- Question versioning / publish workflow
-- Bulk import/export
+- Audit log entries on release/revoke
+- Automatic `candidate_user_id` binding from assignments
+- Coordinator role for release actions
 
 ## Key Implementation Decisions
 
 ### Backend
-1. **Permissions**: Authenticated list/retrieve; `EXAMINER` or `SYSTEM_ADMIN` for writes/image upload.
-2. **Validation**: Serializer + model `clean()` after nested replace-on-write.
-3. **Filtering**: Query params `subject`, `topic`, `difficulty`, `type`.
+1. **Permissions**: Staff (`is_staff`) for release/status endpoints; authenticated users for candidate view with server-side ownership checks.
+2. **Disclosure levels**: `none`, `summary` (aggregates), `detailed` (aggregates + item correctness).
+3. **Release lifecycle**: `mark_release` creates `ReleaseControl` on first release when `candidate_user_id` is provided and `CombinedResult` exists.
 
 ### Frontend
-1. **Access control**: `withExaminerGuard` + `useExaminerAccess` probe via `checkExaminerAccess()` (POST validation probe) and `checkSystemAdminAccess()`.
-2. **API mapping**: Client uses camelCase helpers; payloads serialized to snake_case for Django (`blank_answer_keys`, `is_correct`).
-3. **Image flow**: Create/update question first, then `uploadQuestionImage` when a file is selected.
-4. **Filters**: Server filters applied on submit; text search filters current page client-side (matches groups list pattern).
-5. **Unsaved changes**: `useBlocker` + `beforeunload` in editor; mocked in tests.
-6. **Validation**: Shared `utils/questionBank.ts` mirrors backend type rules; Save disabled until valid.
+1. **Staff guard**: `AdminRoute` (branding probe) for `/admin/results/release/:attemptId`, matching grading pages.
+2. **Candidate guard**: `ProtectedRoute` with authentication; backend enforces attempt ownership.
+3. **ReleaseControl form**: Radio disclosure options, release toggle, hidden `test_id` / `candidate_user_id` passed through on submit.
+4. **CandidateResult rendering**: `withheld` → message only; `summary` → totals/by-topic; `detailed` → adds question correctness table.
+5. **isStaff in useAuth**: Reuses `useAdminAccess` (getBranding probe) for route guards and future UI conditionals.
 
 ## API Endpoints
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/question-bank/questions/` | GET | Authenticated | List questions (filterable) |
-| `/api/question-bank/questions/` | POST | Examiner or system admin | Create question |
-| `/api/question-bank/questions/{id}/` | GET | Authenticated | Retrieve question |
-| `/api/question-bank/questions/{id}/` | PATCH | Examiner or system admin | Partial update |
-| `/api/question-bank/questions/{id}/` | DELETE | Examiner or system admin | Delete question |
-| `/api/question-bank/questions/{id}/upload-image/` | POST | Examiner or system admin | Upload image |
+| `/api/results/release/` | POST | Staff | Set release state and disclosure |
+| `/api/results/status/<attempt_id>/` | GET | Staff | Return `ReleaseControl` record |
+| `/api/results/candidate/<attempt_id>/` | GET | Authenticated | Candidate-scoped result view |
 
 ## Frontend Routes
 
 | Route | Component | Guard |
 |-------|-----------|-------|
-| `/questions` | `QuestionsList` | `withExaminerGuard` |
-| `/questions/new` | `QuestionEditor` | `withExaminerGuard` |
-| `/questions/:id/edit` | `QuestionEditor` | `withExaminerGuard` |
+| `/admin/results/release/:attemptId` | `ReleaseControl` | `AdminRoute` (staff) |
+| `/results/:attemptId` | `CandidateResult` | `ProtectedRoute` (authenticated) |
 
 ## Files Changed
 
 ### Backend
 | File | Why |
 |------|-----|
-| `backend/src/question_bank/**` | Models, API, admin, tests |
+| `backend/src/results/**` | Models, services, views, tests, migration |
 | `backend/src/core/settings/base.py` | App registration |
 | `backend/src/core/urls.py` | URL include |
 
 ### Frontend
 | File | Why |
 |------|-----|
-| `frontend/src/types/questionBank.ts` | Domain types and labels |
-| `frontend/src/api/questionBank.ts` | Question bank API client |
-| `frontend/src/api/questionBank.test.ts` | API client tests |
-| `frontend/src/utils/questionBank.ts` | Form validation/helpers |
-| `frontend/src/utils/questionBank.test.ts` | Utility tests |
-| `frontend/src/hooks/useExaminerAccess.ts` | Examiner access hook |
-| `frontend/src/auth/guards.tsx` | `withExaminerGuard` |
-| `frontend/src/pages/questions/QuestionsList.tsx` | List/filter/delete UI |
-| `frontend/src/pages/questions/QuestionEditor.tsx` | Authoring form + nested editors |
-| `frontend/src/pages/questions/questions.css` | Feature styles |
-| `frontend/src/pages/questions/*.test.tsx` | Page tests |
+| `frontend/src/api/results.ts` | Results API client |
+| `frontend/src/api/results.test.ts` | API client tests |
+| `frontend/src/pages/results/ReleaseControl.tsx` | Staff release/disclosure form |
+| `frontend/src/pages/results/CandidateResult.tsx` | Candidate result view |
+| `frontend/src/pages/results/results.css` | Page styles |
+| `frontend/src/pages/results/index.ts` | Barrel exports |
+| `frontend/src/pages/results/*.test.tsx` | Component + snapshot tests |
+| `frontend/src/hooks/useAuth.ts` | Added `isStaff` / `isStaffChecking` |
 | `frontend/src/App.tsx` | Route registration |
-| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Nav link |
 
 ## Verification
 
@@ -104,11 +93,11 @@ npm run lint
 npm run build
 ```
 
-Results: **150** backend tests passed; **108** frontend tests passed; build succeeds.
+Results: **173** backend tests passed; **117** frontend tests passed; build succeeds.
 
 ## Open Questions / Follow-ups
 
-- Link question bank UUIDs to grading/scoring instead of opaque string IDs
-- Question versioning and draft/published states
-- Server-side text search and cross-page filtering
-- Bulk import/export (CSV/QTI)
+- Emit audit log events when results are released or revoked
+- Tie `candidate_user_id` to assignment/attempt ownership automatically
+- Sidebar navigation links to release control from grading workflow
+- Expose `is_staff` on `/api/auth/me/` to avoid branding probe for staff checks

@@ -80,6 +80,9 @@ urlpatterns = [
 
     # Question bank
     path('api/question-bank/', include('question_bank.urls')),
+
+    # Results release and candidate visibility
+    path('api/results/', include('results.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
