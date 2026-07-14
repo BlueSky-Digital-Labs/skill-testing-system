@@ -17,6 +17,7 @@ import {
   UsersRound,
   BookOpen,
   CalendarClock,
+  BarChart3,
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -42,6 +43,11 @@ export const Sidebar = () => {
       icon: LayoutDashboard,
       label: sidebarContent.menuItems.dashboard,
       path: '/dashboard',
+    },
+    {
+      icon: BarChart3,
+      label: sidebarContent.menuItems.reports,
+      path: '/reports',
     },
     ...(isExaminer
       ? [

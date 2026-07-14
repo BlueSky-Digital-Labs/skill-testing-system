@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { RootState } from '@store/index'
+import { ReportRoutes } from '@/routes'
 import { LoginPage, SignIn, ForgotPassword, ResetPassword } from '@pages/auth'
 import { SelfRegister, AcceptInvite } from '@pages/candidates'
 import { DashboardPage } from '@pages/dashboard'
@@ -191,6 +192,8 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      {ReportRoutes({ isAuthenticated })}
     </Routes>
   )
 }

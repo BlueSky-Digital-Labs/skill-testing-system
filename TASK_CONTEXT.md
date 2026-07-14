@@ -1,36 +1,50 @@
-# Task Context: Reporting Application (Backend)
+# Task Context: Reporting (Backend + Frontend)
 
 **Branch:** `sunset/task/feat-47a54e8a`  
 **PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/26
 
 ## Scope
 
-Add a dedicated `reporting` Django app with analytics query functions, DRF API endpoints, CSV/PDF export via S3, and role-based access control.
+Deliver end-to-end reporting: Django analytics APIs with CSV/PDF export, plus a React Reports UI that consumes those endpoints.
 
 ### In scope
 
+**Backend**
 - Reporting app under `backend/src/reporting/`
-- Query layer for individual, test summary, question performance, group comparison, and progress reports
-- DRF endpoints under `/api/reports/` plus `POST /api/exports/`
-- CSV (stdlib) and PDF (ReportLab) export helpers with S3 upload and presigned download URLs
-- Shared S3 utilities in `backend/src/core/storage.py`
-- Permission classes in `backend/src/authentication/report_permissions.py`
-- Pytest coverage for queries, API, and exports
+- Query layer, DRF endpoints, export helpers, permissions, S3 storage utilities
+- Pytest coverage
+
+**Frontend**
+- Reports pages under `frontend/src/pages/reports/`
+- Shared filters, table, chart, and export components
+- API client in `frontend/src/api/reports.ts`
+- Routes under `/reports/*` and sidebar navigation
+- Vitest/RTL tests for API client and key UI flows
 
 ### Out of scope
 
-- Frontend reporting dashboards
 - Scheduled report generation
 - Dedicated `Test` model (tests remain UUID `test_id` values)
+- Progress report UI page (backend endpoint exists; frontend focuses on four report pages per ticket)
 
 ## Key Implementation Decisions
 
-1. **New `reporting` app** — Registered in `INSTALLED_APPS`; keeps analytics separate from delivery/grading/results.
-2. **Query functions** — Pure ORM aggregation in `queries.py`, reusing `Attempt`, `CombinedResult`, `ObjectiveScore`, `Assignment`, and `CandidateGroup`.
-3. **Permissions** — Individual reports: attempt owner or staff/coordinator/examiner/admin. Analytics reports: coordinator/examiner/admin. Progress: coordinator/admin only. Export permissions mirror report type.
-4. **S3 storage** — `core/storage.py` provides generic upload/presign helpers; `REPORTS_BUCKET` falls back to `CERTIFICATES_BUCKET`.
-5. **PDF exports** — ReportLab 3.6.13 per ticket requirements; tabular layout from flattened report rows.
-6. **URL mounting** — `reporting.urls` included at `api/reports/` (Django `PYTHONPATH=src` convention); export view mounted separately at `api/exports/`.
+### Backend
+
+1. **New `reporting` app** — Keeps analytics separate from delivery/grading/results.
+2. **Permissions** — Individual: attempt owner or staff/coordinator/examiner/admin. Analytics: coordinator/examiner/admin. Progress: coordinator/admin.
+3. **S3 storage** — `core/storage.py`; `REPORTS_BUCKET` falls back to `CERTIFICATES_BUCKET`.
+4. **PDF exports** — ReportLab 3.6.13 with tabular layout.
+5. **Routes** — `reporting.urls` at `api/reports/`; export view at `api/exports/`.
+
+### Frontend
+
+1. **Page shell** — `ReportsLayout` wraps `DashboardLayout`, sub-navigation, and role-aware analytics tabs.
+2. **Filter persistence** — `sessionStorage` keyed per report type (`reports-filters:*`).
+3. **API client** — `authorizedFetch` + typed helpers mirroring backend paths and export payload shapes.
+4. **Exports** — `ExportButtons` posts to `/api/exports/` and opens the presigned `download_url`.
+5. **Routing** — Centralized in `frontend/src/routes.tsx`; sidebar link at `/reports` for all authenticated users.
+6. **Charts** — Lightweight CSS bar chart component (no extra chart library).
 
 ## Endpoint Contracts
 
@@ -41,39 +55,63 @@ Add a dedicated `reporting` Django app with analytics query functions, DRF API e
 | GET | `/api/reports/question-performance/{test_id}/` | Coordinator/Examiner/Admin | Per-question-version correctness |
 | GET | `/api/reports/group-comparison/{test_id}/` | Coordinator/Examiner/Admin | Per-group completion and scores |
 | GET | `/api/reports/progress/` | Coordinator/Admin | Query params: `group_id`, optional `topic`, `from_dt`, `to_dt` |
-| POST | `/api/exports/` | Report-type dependent | Body: `report_type`, `format` (`csv`/`pdf`), `parameters` |
+| POST | `/api/exports/` | Report-type dependent | Body: `report_type`, `format`, `parameters` |
+
+## Frontend Routes
+
+| Path | Page |
+|------|------|
+| `/reports` | Redirect to `/reports/individual` |
+| `/reports/individual` | Individual attempt report |
+| `/reports/test` | Test summary report |
+| `/reports/question` | Question performance report |
+| `/reports/group` | Group comparison report |
 
 ## Files Changed
 
+### Backend
+
 | File | Why |
 |------|-----|
-| `backend/src/reporting/apps.py` | App config |
-| `backend/src/reporting/queries.py` | ORM query/aggregation functions |
-| `backend/src/reporting/serializers.py` | DRF response/request serializers |
-| `backend/src/reporting/views.py` | API views for reports and exports |
-| `backend/src/reporting/exports.py` | CSV/PDF generation helpers |
-| `backend/src/reporting/urls.py` | Report route definitions |
-| `backend/src/reporting/tests/*` | Unit, API, and export tests |
+| `backend/src/reporting/*` | Reporting app, queries, views, exports, tests |
 | `backend/src/core/storage.py` | S3 upload and presigned URL utilities |
 | `backend/src/authentication/report_permissions.py` | Role-based report permissions |
 | `backend/src/core/settings/base.py` | App registration, S3 settings, OpenAPI tag |
 | `backend/src/core/urls.py` | Mount reporting and export routes |
 | `backend/requirements.txt` | Add `reportlab==3.6.13` |
 
+### Frontend
+
+| File | Why |
+|------|-----|
+| `frontend/src/api/reports.ts` | Reporting API client and export helpers |
+| `frontend/src/api/reports.types.ts` | TypeScript interfaces for report payloads |
+| `frontend/src/api/reports.test.ts` | API client unit tests |
+| `frontend/src/pages/reports/*` | Pages, shared layout, components, styles, tests |
+| `frontend/src/routes.tsx` | Centralized report route definitions |
+| `frontend/src/App.tsx` | Include report routes |
+| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Reports navigation entry |
+| `frontend/src/content/index.ts` | Sidebar/report copy strings |
+
 ## Verification
 
 ```bash
+# Backend
 cd backend
-pip install -r requirements.txt  # reportlab may need libfreetype-dev, python3-dev to build
-
 SECRET_KEY=test-secret PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test \
   python3 -m pytest src/reporting/tests/ -v
-
 python3 -m flake8 src/reporting/ src/authentication/report_permissions.py src/core/storage.py
+
+# Frontend
+cd frontend
+npm test
+npm run lint
+npm run build
 ```
 
 ## Open Questions / Follow-ups
 
-- Should candidates export their own individual reports in PDF format with branding?
+- Add a dedicated Progress report page wired to `GET /api/reports/progress/`.
+- Should candidates export individual reports with organization branding?
 - Add audit log entries for sensitive aggregate report access?
-- Introduce a first-class `Test` model to simplify `test_id` joins?
+- Introduce a first-class `Test` model to simplify `test_id` lookups in UI pickers?

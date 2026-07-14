@@ -84,7 +84,12 @@ export const content = {
       users: 'Users',
       roles: 'Roles',
       branding: 'Branding',
-      auditLog: 'Audit Log'
+      auditLog: 'Audit Log',
+      reports: 'Reports',
+      individualReport: 'Individual',
+      testReport: 'Test summary',
+      questionReport: 'Question performance',
+      groupReport: 'Group comparison',
     },
     user: {
       logout: 'Logout'
