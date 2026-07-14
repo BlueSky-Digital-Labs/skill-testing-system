@@ -138,7 +138,12 @@ export function QuestionsList() {
             <h1>Question bank</h1>
             <p>Create and manage exam questions for your assessments.</p>
           </div>
-          <Button onClick={() => navigate('/questions/new')}>New question</Button>
+          <div className="questions-page__header-actions">
+            <Button variant="secondary" onClick={() => navigate('/questions/import')}>
+              Import questions
+            </Button>
+            <Button onClick={() => navigate('/questions/new')}>New question</Button>
+          </div>
         </header>
 
         <form className="admin-page__toolbar questions-page__filters" onSubmit={handleFilterSubmit}>
