@@ -1,114 +1,87 @@
-# Task Context: Candidate Groups (Backend + Frontend)
+# Task Context: Question Bank Backend Service
 
-**Branch:** `sunset/task/feat-bc0e5ae2`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/11
+**Branch:** `sunset/task/feat-fa5cce9f`
 
 ## Scope
 
-End-to-end **Candidate Groups** for organizing candidates into coordinator-managed cohorts.
+Implement a Django REST API for managing a **question bank** with support for multiple question types (MCQ, multi-select, true/false, fill-in-the-blank, free text), nested options/answer keys, image uploads, filtering, and role-based write permissions.
 
-### Backend (completed)
-- `CandidateGroup` model with ManyToMany membership to `User`
-- REST API under `/api/core/groups/` (CRUD + member add/remove actions)
-- `IsCoordinatorOrAdmin` permission gating
-- Django admin registration, audit logging, pytest coverage
-
-### Frontend (this ticket)
-- Coordinator-facing groups management UI at `/coordinator/groups` and `/coordinator/groups/:id`
-- API client (`frontend/src/api/groups.ts`) integrated with shared `client.ts` (JWT via `apiFetch`)
-- Reusable `GroupPicker` async-select for downstream assignment UI
-- Role guard via `withCoordinatorGuard` (probes `GET /api/core/groups/`)
+### In scope
+- New `question_bank` Django app under `backend/src/`
+- Models: `Question`, `Option`, `BlankAnswerKey` with `QuestionType` and `Difficulty` enums
+- Type-aware serializer validation and model `clean()` checks
+- `IsExaminerOrAdmin` permission for create/update/delete/image upload
+- `QuestionViewSet` CRUD at `/api/question-bank/questions/`
+- Custom `upload-image` action for question images
+- Django admin registration with filters
+- Initial migration and pytest coverage
 
 ### Out of scope
-- Wiring `Assignment.assignee_group_id` to `CandidateGroup` FK in assignment UI (GroupPicker is ready for integration)
-- Server-side group search (list search filters client-side on the current page)
+- Frontend question bank UI
+- Integration with grading auto-scoring (grading app still uses external question IDs)
+- Question versioning or publishing workflow
 
 ## Key Implementation Decisions
 
-### Backend
-1. **Project layout**: Models/serializers live in package modules; API routes in `core/api_urls.py` included at `/api/core/`.
-2. **Membership rules**: Only active `CANDIDATE` users can be added; others appear in `invalid_users`.
-3. **Member actions**: Accept `user_ids` and/or `emails`; always HTTP 200 with detailed result buckets.
-
-### Frontend
-1. **Access control**: `withCoordinatorGuard` + `useCoordinatorAccess` verify coordinator/system-admin access by calling `checkCoordinatorAccess()` (groups list endpoint). Unauthenticated users redirect to `/login`; denied users to `/dashboard?access=denied`.
-2. **Data fetching**: Local component state (consistent with existing admin pages); no React Query dependency added.
-3. **API mapping**: Client functions accept camelCase (`userIds`) and map to backend snake_case (`user_ids`).
-4. **Member emails**: `parseAndDedupeEmails` + `filterValidEmails` utilities handle multiline/comma/semicolon input.
-5. **Member list pagination**: Client-side pagination over `group.members` returned by detail endpoint (backend returns full member list).
-6. **Group list search**: Client-side filter on the current API page (backend has no search param).
-7. **Delete/remove confirmations**: `window.confirm` before destructive actions.
-8. **UX**: Loading/empty/error states, toast notifications via existing `ToastProvider`.
+1. **Permissions**: Authenticated users may list/retrieve questions; only `EXAMINER` or `SYSTEM_ADMIN` roles may create, update, delete, or upload images (`IsExaminerOrAdmin`).
+2. **Validation split**: Serializer validates nested payloads on create/update; `Question.clean()` re-validates persisted structure after nested rows are replaced.
+3. **Nested writes**: Create/update replace all `options` and `blank_answer_keys` atomically via serializer helpers (delete-and-recreate pattern).
+4. **Filtering**: Query params `subject`, `topic`, `difficulty`, and `type` on list endpoint (manual queryset filtering, no django-filter dependency).
+5. **Media**: Reused existing `MEDIA_URL` / `MEDIA_ROOT` settings; dev static serving already enabled in `core/urls.py` when `DEBUG=True`.
+6. **IDs**: UUID primary keys for all question bank entities.
 
 ## API Endpoints
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/core/groups/` | GET | Coordinator or system admin | List groups (paginated) |
-| `/api/core/groups/` | POST | Coordinator or system admin | Create group |
-| `/api/core/groups/{id}/` | GET | Coordinator or system admin | Retrieve group with members |
-| `/api/core/groups/{id}/` | PATCH | Coordinator or system admin | Partial update |
-| `/api/core/groups/{id}/` | DELETE | Coordinator or system admin | Delete group |
-| `/api/core/groups/{id}/add-members/` | POST | Coordinator or system admin | Add members |
-| `/api/core/groups/{id}/remove-members/` | POST | Coordinator or system admin | Remove members |
+| `/api/question-bank/questions/` | GET | Authenticated | List questions (filterable) |
+| `/api/question-bank/questions/` | POST | Examiner or system admin | Create question |
+| `/api/question-bank/questions/{id}/` | GET | Authenticated | Retrieve question |
+| `/api/question-bank/questions/{id}/` | PATCH | Examiner or system admin | Partial update |
+| `/api/question-bank/questions/{id}/` | DELETE | Examiner or system admin | Delete question |
+| `/api/question-bank/questions/{id}/upload-image/` | POST | Examiner or system admin | Upload question image |
 
-## Frontend Routes
+## Type Validation Rules
 
-| Route | Component | Guard |
-|-------|-----------|-------|
-| `/coordinator/groups` | `GroupsList` | `withCoordinatorGuard` |
-| `/coordinator/groups/:id` | `GroupDetail` | `withCoordinatorGuard` |
+| Type | Options | Blank Answer Keys |
+|------|---------|-------------------|
+| `MCQ` | ≥2 options, exactly 1 correct | none |
+| `MULTI_SELECT` | ≥2 options, ≥1 correct | none |
+| `TRUE_FALSE` | exactly 2 options, 1 correct | none |
+| `FILL_IN_BLANK` | none | ≥1 accepted answer |
+| `FREE_TEXT` | none | none |
 
 ## Files Changed
 
-### Backend
 | File | Why |
 |------|-----|
-| `backend/src/core/models/groups.py` | `CandidateGroup` model |
-| `backend/src/core/migrations/0002_candidate_groups.py` | Migration |
-| `backend/src/core/serializers/groups.py` | Serializers |
-| `backend/src/core/views/group_views.py` | ViewSet |
-| `backend/src/core/api_urls.py` | Router |
-| `backend/src/core/tests/test_groups_api.py` | API tests |
-
-### Frontend
-| File | Why |
-|------|-----|
-| `frontend/src/types/groups.ts` | `Group`, `GroupDetail`, `MembershipResult` types |
-| `frontend/src/api/groups.ts` | Groups API client |
-| `frontend/src/api/groups.test.ts` | API client tests |
-| `frontend/src/utils/groupEmails.ts` | Email parse/dedupe utilities |
-| `frontend/src/utils/groupEmails.test.ts` | Utility tests |
-| `frontend/src/auth/guards.tsx` | `withCoordinatorGuard` HOC |
-| `frontend/src/hooks/useCoordinatorAccess.ts` | Coordinator access hook |
-| `frontend/src/pages/coordinator/GroupsList.tsx` | Groups table + CRUD |
-| `frontend/src/pages/coordinator/GroupDetail.tsx` | Group detail + member management |
-| `frontend/src/pages/coordinator/EditGroupModal.tsx` | Create/edit modal |
-| `frontend/src/pages/coordinator/groups.css` | Coordinator groups styles |
-| `frontend/src/components/pickers/GroupPicker.tsx` | Async searchable group picker |
-| `frontend/src/App.tsx` | Route registration |
-| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Nav link for coordinators |
+| `backend/src/question_bank/__init__.py` | Package init |
+| `backend/src/question_bank/apps.py` | `QuestionBankConfig` app config |
+| `backend/src/question_bank/models.py` | Core models, enums, constraints |
+| `backend/src/question_bank/migrations/0001_initial.py` | Initial schema migration |
+| `backend/src/question_bank/serializers.py` | Nested serializers + type validation |
+| `backend/src/question_bank/permissions.py` | `IsExaminerOrAdmin` |
+| `backend/src/question_bank/views.py` | `QuestionViewSet` + image upload |
+| `backend/src/question_bank/urls.py` | Router for `/questions/` |
+| `backend/src/question_bank/admin.py` | Admin registration + filters |
+| `backend/src/question_bank/tests/test_question_api.py` | API tests (CRUD, validation, filtering, permissions, upload) |
+| `backend/src/core/settings/base.py` | Register app + OpenAPI tag |
+| `backend/src/core/urls.py` | Include question bank URLs |
 
 ## Verification
 
 ```bash
-# Backend
 cd backend
 pip install -r requirements.txt
 PYTHONPATH=src SECRET_KEY=test-secret-key DJANGO_SETTINGS_MODULE=core.settings.test \
   python3 -m pytest src/ -v
-
-# Frontend
-cd frontend
-npm ci
-npm test
-npm run lint
-npm run build
 ```
+
+Result: **150 passed** (18 new question bank tests).
 
 ## Open Questions / Follow-ups
 
-- Integrate `GroupPicker` into test assignment flow (`TestAssignPage`)
-- Server-side group name search and member pagination if groups grow large
-- FK from `Assignment.assignee_group_id` to `CandidateGroup`
-- Coordinator UI for issuing invitations (separate ticket)
+- Link question bank IDs to grading/scoring flows instead of opaque string `question_id`
+- Question versioning and draft/published states
+- Bulk import/export (CSV/QTI)
+- Server-side text search on question body
