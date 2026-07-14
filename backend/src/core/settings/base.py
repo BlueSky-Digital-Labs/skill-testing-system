@@ -49,6 +49,7 @@ LOCAL_APPS = [
     'grading.apps.GradingConfig',
     'question_bank.apps.QuestionBankConfig',
     'results.apps.ResultsConfig',
+    'tests.apps.TestsConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -193,6 +194,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Candidate Groups', 'description': 'Candidate group membership management'},
         {'name': 'Question Bank', 'description': 'Question bank CRUD and image uploads'},
         {'name': 'Results', 'description': 'Results release gates and candidate visibility'},
+        {'name': 'Tests', 'description': 'Test assembly, sections, and publishing'},
     ],
 }
 
