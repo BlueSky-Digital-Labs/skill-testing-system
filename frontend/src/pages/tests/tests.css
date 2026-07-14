@@ -6,3 +6,49 @@
 .tests-page__version-placeholder {
   color: var(--hd-text-secondary);
 }
+
+.tests-page__test-id {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--hd-text-secondary);
+}
+
+.tests-page__header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tests-page__assignments,
+.tests-page__questions {
+  margin-bottom: 2rem;
+}
+
+.tests-page__actions {
+  margin-bottom: 2rem;
+}
+
+.tests-page__test-links {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tests-page__test-link-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--hd-border-light);
+  border-radius: var(--hd-radius-md);
+}
+
+.tests-page__test-id {
+  font-family: monospace;
+}
+
+.tests-page__test-link-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

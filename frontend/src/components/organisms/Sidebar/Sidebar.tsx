@@ -6,13 +6,8 @@ import { useExaminerAccess } from '@hooks/useExaminerAccess'
 import { useSystemAdminAccess } from '@hooks/useSystemAdminAccess'
 import { useSidebarContent } from '@hooks/useContent'
 import { Logo } from '@components/atoms/Logo'
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  Calendar, 
-  Users, 
-  BarChart3, 
-  Settings, 
+import {
+  LayoutDashboard,
   LogOut,
   Palette,
   ClipboardCheck,
@@ -21,10 +16,17 @@ import {
   UserCog,
   UsersRound,
   BookOpen,
+  CalendarClock,
 } from 'lucide-react'
 import './Sidebar.css'
 
-// Menu items are now defined inside the component to use content hook
+function isPathActive(pathname: string, path: string): boolean {
+  if (path === '/dashboard') {
+    return pathname === '/dashboard'
+  }
+
+  return pathname === path || pathname.startsWith(`${path}/`)
+}
 
 export const Sidebar = () => {
   const location = useLocation()
@@ -40,43 +42,12 @@ export const Sidebar = () => {
       icon: LayoutDashboard,
       label: sidebarContent.menuItems.dashboard,
       path: '/dashboard',
-      active: true
-    },
-    {
-      icon: Briefcase,
-      label: sidebarContent.menuItems.jobs,
-      path: '/jobs'
-    },
-    {
-      icon: Calendar,
-      label: sidebarContent.menuItems.calendar,
-      path: '/calendar'
-    },
-    {
-      icon: Users,
-      label: sidebarContent.menuItems.clients,
-      path: '/clients'
-    },
-    {
-      icon: Users,
-      label: sidebarContent.menuItems.employees,
-      path: '/employees'
-    },
-    {
-      icon: BarChart3,
-      label: sidebarContent.menuItems.invoicing,
-      path: '/invoicing'
-    },
-    {
-      icon: Settings,
-      label: sidebarContent.menuItems.settings,
-      path: '/settings'
     },
     ...(isExaminer
       ? [
           {
             icon: BookOpen,
-            label: 'Question bank',
+            label: sidebarContent.menuItems.questionBank,
             path: '/questions',
           },
         ]
@@ -84,8 +55,13 @@ export const Sidebar = () => {
     ...(isCoordinator
       ? [
           {
+            icon: CalendarClock,
+            label: sidebarContent.menuItems.assignments,
+            path: '/assignments',
+          },
+          {
             icon: UsersRound,
-            label: 'Candidate groups',
+            label: sidebarContent.menuItems.candidateGroups,
             path: '/coordinator/groups',
           },
         ]
@@ -99,7 +75,7 @@ export const Sidebar = () => {
           },
           {
             icon: ClipboardCheck,
-            label: 'Grading',
+            label: sidebarContent.menuItems.grading,
             path: '/grading',
           },
           {
@@ -113,12 +89,12 @@ export const Sidebar = () => {
       ? [
           {
             icon: UserCog,
-            label: 'Users',
+            label: sidebarContent.menuItems.users,
             path: '/admin/users',
           },
           {
             icon: Shield,
-            label: 'Roles',
+            label: sidebarContent.menuItems.roles,
             path: '/admin/roles',
           },
         ]
@@ -138,10 +114,8 @@ export const Sidebar = () => {
       <nav className="sidebar-nav">
         {menuItems.map((item) => {
           const Icon = item.icon
-          const isActive =
-            location.pathname === item.path ||
-            (item.path === '/questions' && location.pathname.startsWith('/questions'))
-          
+          const isActive = isPathActive(location.pathname, item.path)
+
           return (
             <Link
               key={item.path}
