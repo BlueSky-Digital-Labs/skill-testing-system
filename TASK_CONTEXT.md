@@ -1,7 +1,7 @@
 # Task Context: Backend Test Assembly APIs
 
 **Branch:** `sunset/task/feat-26133733`  
-**PR:** _(pending)_
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/18
 
 ## Scope
 
