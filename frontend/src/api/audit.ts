@@ -1,5 +1,6 @@
 import { ApiError } from './auth'
-import { authorizedFetch, getApiBase } from './client'
+import { authorizedFetch } from './http'
+import { getApiBase } from './client'
 import type {
   AuditLogListResponse,
   GetAuditLogsParams,

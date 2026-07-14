@@ -1,4 +1,5 @@
-import { authorizedFetch, getApiBase, parseResponse } from './client'
+import { authorizedFetch } from './http'
+import { getApiBase, parseResponse } from './client'
 
 export type DisclosureLevel = 'none' | 'summary' | 'detailed'
 

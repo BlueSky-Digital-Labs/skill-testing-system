@@ -1,67 +1,71 @@
-# Task Context: Question Version-Aware Authoring UI (Frontend)
+# Task Context: Docker Build + Frontend Stack Overflow Fix
 
-**Branch:** `sunset/task/28-24e719fa`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/17
+**Branch:** `sunset/task/42-3385d121`  
+**PR:** _(pending)_
 
 ## Scope
 
-Add version-aware authoring UI for question authors in the frontend, displaying version numbers, warning banners, save confirmation modals, and placeholder version history — integrated with existing question authoring components and optional backend versioning fields.
+Fix two deployment/runtime issues in the monorepo:
+
+1. **Backend — Docker build failure on Sunset**: Deploy contract used repo-root paths (`backend/Dockerfile`, `context: backend`) while the platform stages each service directory into `_src/`, so `docker build -f "_src/$DOCKERFILE" "_src/$CONTEXT"` could not find the Dockerfile.
+2. **Frontend — blank page / `Maximum call stack size exceeded`**: Circular ES module imports caused runtime initialization failures (surfacing in minified bundles near `useRef`).
 
 ### In scope (completed)
-- `QuestionEditPage.tsx` — version label, warning banner, save confirmation modal, collapsible version history
-- `TestDetailPage.tsx` — placeholder test detail view with per-question version badges
-- Shared components: `QuestionVersionBadge`, `SaveVersionConfirmModal`, `VersionHistorySection`
-- Optional `latest_version_number` / `version_history` fields on `Question` type
-- Version column on `QuestionsList` when data is present
-- Vitest coverage for version display, warnings, modal flow, placeholders, and error handling
+
+- `.sunset/deploy.yaml` — correct `dockerfile` / `context` for backend and frontend services
+- Break `api/auth.ts` ↔ `api/client.ts` ↔ `api/http.ts` cycle by removing `authorizedFetch` re-export from `client.ts`
+- Break `hooks/useAuth.ts` ↔ `hooks/useAdminAccess.ts` cycle by removing unused admin access coupling from `useAuth`
+- Remove unused `QuestionVersionBadge` import blocking production `tsc` build (Docker frontend image)
+- Add `moduleGraph.test.ts` to guard against API module circular imports
 
 ### Out of scope / deferred
-- Backend API exposure of `latest_version_number` and version history (UI hides version elements when absent)
-- Full test detail data fetching from backend
-- Deep-linking to individual version snapshots
+
+- Refactoring `useAdminAccess` consumers to read auth state from Redux directly (not needed once `useAuth` no longer imports it)
+- Installing Docker in CI/dev VM for local image builds (path fix validated via staged `_src` simulation)
 
 ## Key Implementation Decisions
 
-1. **`QuestionEditPage` replaces inline editor logic**: `QuestionEditor.tsx` re-exports `QuestionEditPage` for backward compatibility with existing routes/tests.
-2. **Graceful degradation**: Version UI renders only when `latest_version_number` is a number ≥ 1; missing/incomplete API data hides badges, warnings, and save modal.
-3. **Save confirmation**: Edit saves for versioned questions open an accessible modal (focus trap, Escape, `aria-*`) before calling `updateQuestion`.
-4. **Version history**: Collapsible section lists `version_history` when provided; otherwise shows a placeholder message for future backend links.
-5. **`TestDetailPage` props**: Accepts optional `questions` with `versionNumber` for badge display until test composition API lands.
+1. **Deploy paths are relative to the staged service root**: With `path: backend`, Sunset copies `backend/` contents into `_src/`. Build must use `dockerfile: Dockerfile` and `context: .` so the command resolves to `-f "_src/Dockerfile" "_src/."`.
+2. **Keep `authorizedFetch` in `http.ts`**: Call sites that previously imported it from `client.ts` now import from `http.ts`; `client.ts` no longer eagerly loads `http.ts`, breaking the `auth → client → http → auth` loop.
+3. **`useAuth` stays focused on Redux session state**: `isStaff` / `isStaffChecking` were unused outside `useAuth`; removing them avoids the hook cycle without API changes.
 
 ## Files Changed
 
 | File | Why |
 |------|-----|
-| `frontend/src/types/questionBank.ts` | Optional version fields on `Question` |
-| `frontend/src/pages/questions/QuestionEditPage.tsx` | Version-aware edit page |
-| `frontend/src/pages/questions/QuestionEditor.tsx` | Re-export shim |
-| `frontend/src/pages/questions/components/QuestionVersionBadge.tsx` | Reusable version badge |
-| `frontend/src/pages/questions/components/SaveVersionConfirmModal.tsx` | Accessible save confirmation |
-| `frontend/src/pages/questions/components/VersionHistorySection.tsx` | Collapsible history / placeholder |
-| `frontend/src/pages/questions/QuestionEditPage.test.tsx` | Version UI tests |
-| `frontend/src/pages/questions/QuestionsList.tsx` | Version column in list |
-| `frontend/src/pages/questions/questions.css` | Version UI styles |
-| `frontend/src/pages/questions/index.ts` | Export `QuestionEditPage` |
-| `frontend/src/pages/tests/TestDetailPage.tsx` | Test detail placeholder with badges |
-| `frontend/src/pages/tests/TestDetailPage.test.tsx` | Badge/placeholder tests |
-| `frontend/src/pages/tests/tests.css` | Test page styles |
-| `frontend/src/App.tsx` | Routes for edit page and test detail |
+| `.sunset/deploy.yaml` | Fix Docker build paths for Sunset `_src` staging |
+| `frontend/src/api/client.ts` | Remove `authorizedFetch` re-export that closed the import cycle |
+| `frontend/src/api/audit.ts` | Import `authorizedFetch` from `http.ts` |
+| `frontend/src/api/results.ts` | Import `authorizedFetch` from `http.ts` |
+| `frontend/src/api/grading.ts` | Import `authorizedFetch` from `http.ts` |
+| `frontend/src/pages/tests/assign/api.ts` | Import `authorizedFetch` from `http.ts` |
+| `frontend/src/pages/attempts/api.ts` | Import `authorizedFetch` from `http.ts` |
+| `frontend/src/hooks/useAuth.ts` | Remove `useAdminAccess` dependency |
+| `frontend/src/pages/questions/QuestionEditPage.tsx` | Remove unused import (fixes `tsc`/Docker build) |
+| `frontend/src/api/moduleGraph.test.ts` | Regression test for API module graph |
 
 ## Verification
 
 ```bash
-cd frontend
-npm ci
-npm test
-npm run lint
-npm run build
+# Deploy contract
+python3 .sunset/validate_deploy_contract.py
+
+# Frontend
+cd frontend && npm ci && npm test && npm run lint && npm run build
+npx madge --circular --extensions ts,tsx src/   # expect no cycles
+
+# Backend (tests only; deploy path validated separately)
+cd backend && SECRET_KEY=test-secret-key python3 -m pytest -q
 ```
 
-Results: **141** frontend tests passed (9 new version UI tests).
+Results:
+- Deploy contract OK
+- **142** frontend tests passed (1 new module graph test)
+- Frontend lint: 0 errors (2 pre-existing warnings)
+- Frontend production build succeeded
+- **216** backend tests passed
 
 ## Open Questions / Follow-ups
 
-- Expose `latest_version_number` and `version_history` from Django `QuestionSerializer`
-- Wire `TestDetailPage` to real test composition API
-- Auto-call `create_snapshot` on question update in backend views
-- Add version history deep links when REST endpoints exist
+- Confirm Sunset staging always mirrors `path/` into `_src/` for all project types (assumption matches observed build command and local simulation)
+- Consider adding deploy-contract validation for `build.dockerfile` / `build.context` when `path` is set

@@ -6,8 +6,8 @@ services:
     role: web
     path: backend
     build:
-      dockerfile: backend/Dockerfile
-      context: backend
+      dockerfile: Dockerfile
+      context: .
     port: 8000
     health:
       path: /api/health/
@@ -31,8 +31,8 @@ services:
     role: web
     path: frontend
     build:
-      dockerfile: frontend/Dockerfile
-      context: frontend
+      dockerfile: Dockerfile
+      context: .
     port: 3000
     health:
       path: /

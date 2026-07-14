@@ -1,4 +1,5 @@
-import { authorizedFetch, getApiBase, parseResponse } from '@/api/client'
+import { authorizedFetch } from '@/api/http'
+import { getApiBase, parseResponse } from '@/api/client'
 
 export type DisclosureMode =
   | 'withhold_until_release'
