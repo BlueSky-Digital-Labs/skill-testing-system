@@ -192,3 +192,45 @@ class BlankAnswerKey(models.Model):
 
     def __str__(self):
         return self.answer
+
+
+class QuestionVersion(models.Model):
+    """Immutable snapshot of a question at a point in time."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.CASCADE,
+        related_name='versions',
+    )
+    version_number = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='question_versions',
+    )
+
+    subject = models.CharField(max_length=128)
+    topic = models.CharField(max_length=128)
+    difficulty = models.CharField(max_length=16)
+    question_type = models.CharField(max_length=32)
+    prompt = models.TextField()
+    points = models.PositiveIntegerField()
+    image_url = models.URLField(blank=True, default='')
+    explanation = models.TextField(blank=True, default='')
+    options = models.JSONField(default=list)
+    correct_answers = models.JSONField(default=list)
+    sha256 = models.CharField(max_length=64)
+
+    class Meta:
+        unique_together = ('question', 'version_number')
+        ordering = ['-version_number']
+        indexes = [
+            models.Index(fields=['question', 'version_number']),
+        ]
+
+    def __str__(self):
+        return f'{self.question_id} v{self.version_number}'
