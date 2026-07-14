@@ -9,6 +9,7 @@ import { AuditPage } from '@pages/admin/audit'
 import { UsersPage, RolesPage } from '@pages/admin'
 import { GradingList, GradingDetail } from '@pages/grading'
 import { TestAssignPage } from '@pages/tests/assign'
+import { AssignmentsListPage } from '@pages/tests/AssignmentsListPage'
 import { GroupsList, GroupDetail } from '@pages/coordinator'
 import { QuestionsList, QuestionEditPage, ImportPage } from '@pages/questions'
 import { TestDetailPage } from '@pages/tests/TestDetailPage'
@@ -21,6 +22,7 @@ import { withCoordinatorGuard, withExaminerGuard } from '@/auth/guards'
 
 const CoordinatorGroupsList = withCoordinatorGuard(GroupsList)
 const CoordinatorGroupDetail = withCoordinatorGuard(GroupDetail)
+const CoordinatorAssignmentsList = withCoordinatorGuard(AssignmentsListPage)
 const ExaminerQuestionsList = withExaminerGuard(QuestionsList)
 const ExaminerQuestionEditPage = withExaminerGuard(QuestionEditPage)
 const ExaminerImportPage = withExaminerGuard(ImportPage)
@@ -105,6 +107,8 @@ function App() {
           </AdminRoute>
         }
       />
+
+      <Route path="/assignments" element={<CoordinatorAssignmentsList />} />
 
       <Route
         path="/tests/:testId/assign"
