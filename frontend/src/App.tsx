@@ -12,6 +12,7 @@ import { TestAssignPage } from '@pages/tests/assign'
 import { GroupsList, GroupDetail } from '@pages/coordinator'
 import { QuestionsList, QuestionEditor } from '@pages/questions'
 import { ReleaseControl, CandidateResult } from '@pages/results'
+import { AttemptCompletionPage } from '@pages/attempts'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
 import { SystemAdminRoute } from '@components/organisms/SystemAdminRoute'
@@ -133,6 +134,15 @@ function App() {
         element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <CandidateResult />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/attempts/:attemptId/complete"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <AttemptCompletionPage />
           </ProtectedRoute>
         }
       />
