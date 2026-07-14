@@ -4,6 +4,7 @@ import { RootState } from '@store/index'
 import { LoginPage, RegisterPage, SignIn, ForgotPassword, ResetPassword } from '@pages/auth'
 import { DashboardPage } from '@pages/dashboard'
 import { BrandingPage } from '@pages/admin/branding'
+import { AuditPage } from '@pages/admin/audit'
 import { GradingList, GradingDetail } from '@pages/grading'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
@@ -39,6 +40,15 @@ function App() {
         element={
           <AdminRoute isAuthenticated={isAuthenticated}>
             <BrandingPage />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/audit"
+        element={
+          <AdminRoute isAuthenticated={isAuthenticated}>
+            <AuditPage />
           </AdminRoute>
         }
       />
