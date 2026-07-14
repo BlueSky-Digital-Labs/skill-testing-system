@@ -51,6 +51,7 @@ LOCAL_APPS = [
     'results.apps.ResultsConfig',
     'results.certificates.apps.ResultsCertificatesConfig',
     'delivery.apps.DeliveryConfig',
+    'notifications.apps.NotificationsConfig',
     'reporting.apps.ReportingConfig',
 ]
 
@@ -200,6 +201,8 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Attempts', 'description': 'Exam attempt delivery, autosave, and submission'},
         {'name': 'Preview', 'description': 'Non-persistent preview sessions for examiners and authors'},
         {'name': 'Reporting', 'description': 'Analytics reports and exports'},
+        {'name': 'Notifications', 'description': 'Email invitations, reminders, and delivery logs'},
+        {'name': 'Monitoring', 'description': 'Exam delivery monitoring and status summaries'},
     ],
 }
 
@@ -241,6 +244,11 @@ EMAIL_BACKEND = env(
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='no-reply@example.test')
 FRONTEND_URL = env('FRONTEND_URL', default=None)
 ALLOW_SELF_REGISTRATION = env.bool('ALLOW_SELF_REGISTRATION', default=False)
+
+# Email provider configuration
+EMAIL_PROVIDER = env('EMAIL_PROVIDER', default='console')
+RESEND_INVITE_THROTTLE_SECONDS = env.int('RESEND_INVITE_THROTTLE_SECONDS', default=3600)
+INVITATION_URL_EXPIRE_SECONDS = env.int('INVITATION_URL_EXPIRE_SECONDS', default=604800)
 
 # Certificate storage (S3)
 CERTIFICATES_BUCKET = env('CERTIFICATES_BUCKET', default='')

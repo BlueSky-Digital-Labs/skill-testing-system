@@ -1,0 +1,12 @@
+Hello {{ candidate_name }},
+
+This is a reminder that your exam is due soon.
+
+Test: {{ test_title }}
+Due: {{ due_at }}
+
+You can continue or start your attempt using the link below:
+
+{{ invite_url }}
+
+{{ organization_name }}

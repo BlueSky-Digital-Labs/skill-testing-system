@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <p>Hello {{ candidate_name }},</p>
+    <p>You have been invited to take an exam.</p>
+    <p>
+      <a href="{{ invite_url }}">Accept your invitation</a>
+    </p>
+    <p><strong>Test:</strong> {{ test_title }}</p>
+    <p><strong>Due:</strong> {{ due_at }}</p>
+    <p>If you did not expect this invitation, you can ignore this email.</p>
+    <p>{{ organization_name }}</p>
+  </body>
+</html>

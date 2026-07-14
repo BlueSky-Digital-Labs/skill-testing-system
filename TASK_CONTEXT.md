@@ -1,117 +1,97 @@
-# Task Context: Reporting (Backend + Frontend)
+# Task Context: Backend Notifications Subsystem
 
-**Branch:** `sunset/task/feat-47a54e8a`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/26
+**Branch:** `sunset/task/feat-fa423016`  
+**PR:** _(pending)_
 
 ## Scope
 
-Deliver end-to-end reporting: Django analytics APIs with CSV/PDF export, plus a React Reports UI that consumes those endpoints.
+Implement backend email notifications and delivery monitoring APIs for exam assignments.
 
 ### In scope
 
-**Backend**
-- Reporting app under `backend/src/reporting/`
-- Query layer, DRF endpoints, export helpers, permissions, S3 storage utilities
-- Pytest coverage
+**Notifications app (`backend/src/notifications/`)**
+- `EmailTemplate` and `EmailMessageLog` models with Django admin registration
+- `send_email` service supporting console/Django backend and SES via boto3
+- Signed invitation URL utilities with configurable expiration
+- Default HTML/TXT templates for `invite`, `reminder`, and `results_release`
+- Unit tests for templating, logging, SES/console paths, and throttling helpers
 
-**Frontend**
-- Reports pages under `frontend/src/pages/reports/`
-- Shared filters, table, chart, and export components
-- API client in `frontend/src/api/reports.ts`
-- Routes under `/reports/*` and sidebar navigation
-- Vitest/RTL tests for API client and key UI flows
+**Delivery extensions (`backend/src/delivery/`)**
+- Status query utilities for per-test and per-group summaries
+- DRF endpoints for resend invite, reminders, and monitoring status
+- Resend invite throttling via `EmailMessageLog` timestamps
+- API tests with role-based permissions and mocked delivery flows
+
+**Settings / wiring**
+- Register `notifications` app and email provider settings
+- Mount notification routes under `/api/`
+- Initial migration for notification models
 
 ### Out of scope
 
-- Scheduled report generation
-- Dedicated `Test` model (tests remain UUID `test_id` values)
-- Progress report UI page (backend endpoint exists; frontend focuses on four report pages per ticket)
+- Frontend notification UI
+- Celery/async email queue (emails send synchronously in request handlers)
+- Replacing legacy auth invitation emails in `authentication/invitations.py`
 
 ## Key Implementation Decisions
 
-### Backend
-
-1. **New `reporting` app** — Keeps analytics separate from delivery/grading/results.
-2. **Permissions** — Individual: attempt owner or staff/coordinator/examiner/admin. Analytics: coordinator/examiner/admin. Progress: coordinator/admin.
-3. **S3 storage** — `core/storage.py`; `REPORTS_BUCKET` falls back to `CERTIFICATES_BUCKET`.
-4. **PDF exports** — ReportLab 3.6.13 with tabular layout.
-5. **Routes** — `reporting.urls` at `api/reports/`; export view at `api/exports/`.
-
-### Frontend
-
-1. **Page shell** — `ReportsLayout` wraps `DashboardLayout`, sub-navigation, and role-aware analytics tabs.
-2. **Filter persistence** — `sessionStorage` keyed per report type (`reports-filters:*`).
-3. **API client** — `authorizedFetch` + typed helpers mirroring backend paths and export payload shapes.
-4. **Exports** — `ExportButtons` posts to `/api/exports/` and opens the presigned `download_url`.
-5. **Routing** — Centralized in `frontend/src/routes.tsx`; sidebar link at `/reports` for all authenticated users.
-6. **Charts** — Lightweight CSS bar chart component (no extra chart library).
+1. **Separate `notifications` app** — Keeps email templates, delivery logs, and send logic isolated from attempt lifecycle code.
+2. **Template resolution** — DB `EmailTemplate` rows override file templates under `notifications/templates/email/`; placeholders use `{{ name }}` syntax.
+3. **Email providers** — `EMAIL_PROVIDER=console` (default) uses Django's email backend; `EMAIL_PROVIDER=SES` sends via boto3 and existing AWS credentials.
+4. **Throttling** — `RESEND_INVITE_THROTTLE_SECONDS` (default 3600) prevents duplicate invite sends per assignment/recipient; throttled attempts are logged with status `throttled`.
+5. **Signed invite URLs** — `notifications.utils.generate_signed_invitation_url` uses Django signing with `INVITATION_URL_EXPIRE_SECONDS` (default 7 days).
+6. **Permissions** — Resend invite and reminders require coordinator/admin; monitoring status allows coordinator/examiner/admin.
+7. **Status queries** — `delivery/status.py` aggregates assignment and attempt counts with TODO comments for future Assignment/User FK integration.
 
 ## Endpoint Contracts
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| GET | `/api/reports/individual/{attempt_id}/` | Owner or staff roles | Attempt + scores + topic breakdown |
-| GET | `/api/reports/test-summary/{test_id}/` | Coordinator/Examiner/Admin | Attempt counts, averages, pass rate |
-| GET | `/api/reports/question-performance/{test_id}/` | Coordinator/Examiner/Admin | Per-question-version correctness |
-| GET | `/api/reports/group-comparison/{test_id}/` | Coordinator/Examiner/Admin | Per-group completion and scores |
-| GET | `/api/reports/progress/` | Coordinator/Admin | Query params: `group_id`, optional `topic`, `from_dt`, `to_dt` |
-| POST | `/api/exports/` | Report-type dependent | Body: `report_type`, `format`, `parameters` |
+| POST | `/api/assignments/{assignment_id}/resend-invite/` | Coordinator/Admin | Sends invite emails; throttles recent sends |
+| POST | `/api/tests/{test_id}/reminders/` | Coordinator/Admin | Body filters: `group_id`, `include_not_started`, `include_in_progress`, `include_overdue` |
+| GET | `/api/monitoring/tests/{test_id}/status/` | Coordinator/Examiner/Admin | Assignment/attempt counts and group breakdown |
 
-## Frontend Routes
+## Environment Variables
 
-| Path | Page |
-|------|------|
-| `/reports` | Redirect to `/reports/individual` |
-| `/reports/individual` | Individual attempt report |
-| `/reports/test` | Test summary report |
-| `/reports/question` | Question performance report |
-| `/reports/group` | Group comparison report |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `EMAIL_PROVIDER` | `console` | `console` or `SES` |
+| `RESEND_INVITE_THROTTLE_SECONDS` | `3600` | Minimum seconds between invite resends |
+| `INVITATION_URL_EXPIRE_SECONDS` | `604800` | Signed invitation URL TTL |
+| `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | — | Used when `EMAIL_PROVIDER=SES` |
 
 ## Files Changed
 
-### Backend
-
 | File | Why |
 |------|-----|
-| `backend/src/reporting/*` | Reporting app, queries, views, exports, tests |
-| `backend/src/core/storage.py` | S3 upload and presigned URL utilities |
-| `backend/src/authentication/report_permissions.py` | Role-based report permissions |
-| `backend/src/core/settings/base.py` | App registration, S3 settings, OpenAPI tag |
-| `backend/src/core/urls.py` | Mount reporting and export routes |
-| `backend/requirements.txt` | Add `reportlab==3.6.13` |
-
-### Frontend
-
-| File | Why |
-|------|-----|
-| `frontend/src/api/reports.ts` | Reporting API client and export helpers |
-| `frontend/src/api/reports.types.ts` | TypeScript interfaces for report payloads |
-| `frontend/src/api/reports.test.ts` | API client unit tests |
-| `frontend/src/pages/reports/*` | Pages, shared layout, components, styles, tests |
-| `frontend/src/routes.tsx` | Centralized report route definitions |
-| `frontend/src/App.tsx` | Include report routes |
-| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Reports navigation entry |
-| `frontend/src/content/index.ts` | Sidebar/report copy strings |
+| `backend/src/notifications/*` | New notifications app (models, admin, services, utils, templates, tests, migration) |
+| `backend/src/delivery/status.py` | Per-test/per-group status query utilities |
+| `backend/src/delivery/notification_views.py` | Resend invite, reminders, monitoring API views |
+| `backend/src/delivery/notification_urls.py` | Route registration for notification/monitoring endpoints |
+| `backend/src/delivery/serializers.py` | Request/response serializers for new endpoints |
+| `backend/src/delivery/tests/test_notification_api.py` | API tests for notifications and monitoring |
+| `backend/src/delivery/tests/test_status.py` | Unit tests for status query helpers |
+| `backend/src/core/settings/base.py` | App registration, email provider settings, OpenAPI tags |
+| `backend/src/core/settings/test.py` | Test overrides for notification settings |
+| `backend/src/core/urls.py` | Mount notification routes |
+| `backend/env.example` | Document new email settings |
 
 ## Verification
 
 ```bash
-# Backend
 cd backend
 SECRET_KEY=test-secret PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test \
-  python3 -m pytest src/reporting/tests/ -v
-python3 -m flake8 src/reporting/ src/authentication/report_permissions.py src/core/storage.py
-
-# Frontend
-cd frontend
-npm test
-npm run lint
-npm run build
+  python3 -m pytest src/notifications/tests/ src/delivery/tests/test_notification_api.py \
+  src/delivery/tests/test_status.py -v
+python3 -m flake8 src/notifications/ src/delivery/status.py \
+  src/delivery/notification_views.py src/delivery/notification_urls.py
+SECRET_KEY=test-secret PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test \
+  python3 manage.py migrate --skip-checks
 ```
 
 ## Open Questions / Follow-ups
 
-- Add a dedicated Progress report page wired to `GET /api/reports/progress/`.
-- Should candidates export individual reports with organization branding?
-- Add audit log entries for sensitive aggregate report access?
-- Introduce a first-class `Test` model to simplify `test_id` lookups in UI pickers?
+- Wire `results_release` template into the results release workflow when that notification trigger is defined.
+- Replace UUID-based `assignee_user_id` lookups with direct User FK on `Assignment`.
+- Move email sending to Celery tasks for large batch reminders.
+- Integrate organization branding HTML from `branding.OrganizationSettings` into email templates.

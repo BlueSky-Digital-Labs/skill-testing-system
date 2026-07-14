@@ -36,3 +36,52 @@ class PreviewStartSerializer(serializers.Serializer):
 class PreviewAnswerSerializer(serializers.Serializer):
     question_id = serializers.UUIDField()
     answer = serializers.JSONField()
+
+
+class ReminderRequestSerializer(serializers.Serializer):
+    group_id = serializers.UUIDField(required=False, allow_null=True)
+    include_not_started = serializers.BooleanField(default=True)
+    include_in_progress = serializers.BooleanField(default=True)
+    include_overdue = serializers.BooleanField(default=True)
+
+
+class EmailDeliveryDetailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    status = serializers.CharField()
+    bucket = serializers.CharField(required=False)
+    detail = serializers.CharField(required=False)
+
+
+class ResendInviteResponseSerializer(serializers.Serializer):
+    assignment_id = serializers.UUIDField()
+    sent_count = serializers.IntegerField()
+    throttled_count = serializers.IntegerField()
+    failed_count = serializers.IntegerField()
+    details = EmailDeliveryDetailSerializer(many=True)
+
+
+class ReminderResponseSerializer(serializers.Serializer):
+    test_id = serializers.UUIDField()
+    sent_count = serializers.IntegerField()
+    failed_count = serializers.IntegerField()
+    details = EmailDeliveryDetailSerializer(many=True)
+
+
+class GroupStatusSummarySerializer(serializers.Serializer):
+    group_id = serializers.UUIDField()
+    group_name = serializers.CharField()
+    member_count = serializers.IntegerField()
+    assignment_count = serializers.IntegerField()
+    not_started_count = serializers.IntegerField()
+    in_progress_count = serializers.IntegerField()
+    submitted_count = serializers.IntegerField()
+    attempt_status_counts = serializers.DictField(child=serializers.IntegerField())
+
+
+class TestStatusSummarySerializer(serializers.Serializer):
+    test_id = serializers.UUIDField()
+    assignment_count = serializers.IntegerField()
+    assignment_status_counts = serializers.DictField(child=serializers.IntegerField())
+    assignment_state_counts = serializers.DictField(child=serializers.IntegerField())
+    attempt_status_counts = serializers.DictField(child=serializers.IntegerField())
+    group_breakdown = GroupStatusSummarySerializer(many=True)
