@@ -1,0 +1,54 @@
+.role-multi-select {
+  border: 1px solid var(--hd-border-light);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 0;
+}
+
+.role-multi-select__legend {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--hd-text-secondary);
+  padding: 0 0.25rem;
+}
+
+.role-multi-select__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.role-multi-select__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.role-multi-select__option input {
+  margin-top: 0.2rem;
+}
+
+.role-multi-select__option strong {
+  display: block;
+}
+
+.role-multi-select__key {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--hd-text-secondary);
+}
+
+.role-multi-select__empty {
+  margin: 0;
+  color: var(--hd-text-secondary);
+  font-size: 0.875rem;
+}
+
+.role-multi-select__error {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--hd-error, #dc2626);
+  font-size: 0.875rem;
+}
