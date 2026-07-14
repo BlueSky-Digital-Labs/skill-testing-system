@@ -197,6 +197,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Results', 'description': 'Results release gates and candidate visibility'},
         {'name': 'Certificates', 'description': 'PDF certificate issuance and download'},
         {'name': 'Attempts', 'description': 'Exam attempt delivery, autosave, and submission'},
+        {'name': 'Preview', 'description': 'Non-persistent preview sessions for examiners and authors'},
     ],
 }
 

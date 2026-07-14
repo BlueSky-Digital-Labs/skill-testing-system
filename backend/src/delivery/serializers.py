@@ -27,3 +27,12 @@ class SaveAttemptSerializer(serializers.Serializer):
             )
             for item in self.validated_data['answers']
         ]
+
+
+class PreviewStartSerializer(serializers.Serializer):
+    seed = serializers.IntegerField(required=False)
+
+
+class PreviewAnswerSerializer(serializers.Serializer):
+    question_id = serializers.UUIDField()
+    answer = serializers.JSONField()
