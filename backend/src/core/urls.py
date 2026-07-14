@@ -27,6 +27,7 @@ from question_bank.views.import_api import (
     download_template,
     parse_import,
 )
+from reporting.views import ExportReportView
 
 assignments_router = DefaultRouter()
 assignments_router.register(
@@ -115,6 +116,10 @@ urlpatterns = [
         commit_import,
         name='question_import_commit',
     ),
+
+    # Reporting and exports
+    path('api/reports/', include('reporting.urls')),
+    path('api/exports/', ExportReportView.as_view(), name='report_export'),
 
     # Results release and candidate visibility
     path('api/results/', include('results.urls')),

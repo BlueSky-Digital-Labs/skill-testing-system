@@ -1,82 +1,117 @@
-# Task Context: Author-only Preview / Practice Emulation (Backend)
+# Task Context: Reporting (Backend + Frontend)
 
-**Branch:** `sunset/task/feat-4731d8a8`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/24
+**Branch:** `sunset/task/feat-47a54e8a`  
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/26
 
 ## Scope
 
-Add non-persistent preview/practice endpoints so examiners and test authors can walk through a test (shuffle, answer validation, mocked scoring) without creating `Attempt` records or persisting scores.
+Deliver end-to-end reporting: Django analytics APIs with CSV/PDF export, plus a React Reports UI that consumes those endpoints.
 
 ### In scope
 
-- Preview API under `/api/preview/tests/{test_id}/`
-- Service layer in `delivery/services/preview.py`
-- Examiner / system-admin authorization
-- Deterministic shuffle via optional `seed`
-- In-memory session state (Django cache, 1-hour TTL)
-- Structured logging for preview start / answer / finish
-- Pytest coverage for API and service layers
+**Backend**
+- Reporting app under `backend/src/reporting/`
+- Query layer, DRF endpoints, export helpers, permissions, S3 storage utilities
+- Pytest coverage
+
+**Frontend**
+- Reports pages under `frontend/src/pages/reports/`
+- Shared filters, table, chart, and export components
+- API client in `frontend/src/api/reports.ts`
+- Routes under `/reports/*` and sidebar navigation
+- Vitest/RTL tests for API client and key UI flows
 
 ### Out of scope
 
-- Frontend preview UI
-- Persisting preview sessions or scores
-- Dedicated `TEST_AUTHOR` role (mapped to `EXAMINER` + `SYSTEM_ADMIN`)
-- Standalone `Test` model (tests identified by UUID + question `metadata.test_id`)
+- Scheduled report generation
+- Dedicated `Test` model (tests remain UUID `test_id` values)
+- Progress report UI page (backend endpoint exists; frontend focuses on four report pages per ticket)
 
 ## Key Implementation Decisions
 
-1. **Extend existing `delivery` app** — The app was already registered in `INSTALLED_APPS`; preview routes live in `preview_urls.py` to keep attempt delivery separate.
-2. **Session storage** — Django cache keyed by `delivery:preview:{user_id}:{test_id}`; one active preview per user/test pair; cleared on finish.
-3. **Permissions** — `IsExaminerOrAuthor` (`EXAMINER`, `SYSTEM_ADMIN`) via `delivery/permissions.py`.
-4. **Test configuration** — Shuffle flags read from the most recent `Assignment` for the `test_id`, defaulting to shuffle both when none exists.
-5. **Question resolution** — Strict lookup by `metadata.test_id`; 404 when no tagged questions (no fallback to all questions).
-6. **Scoring** — Reuses `grading.services` objective scorers; `FREE_TEXT` returns zero auto-score with `requires_manual_grading: true`.
-7. **Answer shapes** — Accepts both raw values and structured objects (e.g. `'A'` or `{'selected_option': 'A'}`).
+### Backend
+
+1. **New `reporting` app** — Keeps analytics separate from delivery/grading/results.
+2. **Permissions** — Individual: attempt owner or staff/coordinator/examiner/admin. Analytics: coordinator/examiner/admin. Progress: coordinator/admin.
+3. **S3 storage** — `core/storage.py`; `REPORTS_BUCKET` falls back to `CERTIFICATES_BUCKET`.
+4. **PDF exports** — ReportLab 3.6.13 with tabular layout.
+5. **Routes** — `reporting.urls` at `api/reports/`; export view at `api/exports/`.
+
+### Frontend
+
+1. **Page shell** — `ReportsLayout` wraps `DashboardLayout`, sub-navigation, and role-aware analytics tabs.
+2. **Filter persistence** — `sessionStorage` keyed per report type (`reports-filters:*`).
+3. **API client** — `authorizedFetch` + typed helpers mirroring backend paths and export payload shapes.
+4. **Exports** — `ExportButtons` posts to `/api/exports/` and opens the presigned `download_url`.
+5. **Routing** — Centralized in `frontend/src/routes.tsx`; sidebar link at `/reports` for all authenticated users.
+6. **Charts** — Lightweight CSS bar chart component (no extra chart library).
 
 ## Endpoint Contracts
 
-| Method | Path | Auth | Body | Response |
-|--------|------|------|------|----------|
-| POST | `/api/preview/tests/{test_id}/start/` | Examiner/Admin | `{ seed?: number }` | Preview attempt payload with `preview: true` |
-| POST | `/api/preview/tests/{test_id}/answer/` | Examiner/Admin | `{ question_id, answer }` | `{ accepted, server_ts, validation, partial_score }` |
-| POST | `/api/preview/tests/{test_id}/finish/` | Examiner/Admin | — | `{ preview: true, total_auto_score, per_question }` |
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/api/reports/individual/{attempt_id}/` | Owner or staff roles | Attempt + scores + topic breakdown |
+| GET | `/api/reports/test-summary/{test_id}/` | Coordinator/Examiner/Admin | Attempt counts, averages, pass rate |
+| GET | `/api/reports/question-performance/{test_id}/` | Coordinator/Examiner/Admin | Per-question-version correctness |
+| GET | `/api/reports/group-comparison/{test_id}/` | Coordinator/Examiner/Admin | Per-group completion and scores |
+| GET | `/api/reports/progress/` | Coordinator/Admin | Query params: `group_id`, optional `topic`, `from_dt`, `to_dt` |
+| POST | `/api/exports/` | Report-type dependent | Body: `report_type`, `format`, `parameters` |
 
-### Error codes
+## Frontend Routes
 
-- `404` — test has no questions
-- `403` — caller lacks examiner/admin role
-- `400` — invalid input, missing session, or validation failure
+| Path | Page |
+|------|------|
+| `/reports` | Redirect to `/reports/individual` |
+| `/reports/individual` | Individual attempt report |
+| `/reports/test` | Test summary report |
+| `/reports/question` | Question performance report |
+| `/reports/group` | Group comparison report |
 
 ## Files Changed
 
+### Backend
+
 | File | Why |
 |------|-----|
-| `backend/src/delivery/permissions.py` | `IsExaminerOrAuthor` permission class |
-| `backend/src/delivery/services/preview.py` | Preview session, validation, and scoring logic |
-| `backend/src/delivery/preview_views.py` | DRF views for start / answer / finish |
-| `backend/src/delivery/preview_urls.py` | URL routing for `/api/preview/` |
-| `backend/src/delivery/serializers.py` | `PreviewStartSerializer`, `PreviewAnswerSerializer` |
-| `backend/src/core/urls.py` | Mount `delivery.preview_urls` at `api/preview/` |
-| `backend/src/core/settings/base.py` | OpenAPI `Preview` tag |
-| `backend/src/delivery/tests/test_preview_api.py` | API integration tests |
-| `backend/src/delivery/tests/test_preview_service.py` | Service unit tests |
+| `backend/src/reporting/*` | Reporting app, queries, views, exports, tests |
+| `backend/src/core/storage.py` | S3 upload and presigned URL utilities |
+| `backend/src/authentication/report_permissions.py` | Role-based report permissions |
+| `backend/src/core/settings/base.py` | App registration, S3 settings, OpenAPI tag |
+| `backend/src/core/urls.py` | Mount reporting and export routes |
+| `backend/requirements.txt` | Add `reportlab==3.6.13` |
+
+### Frontend
+
+| File | Why |
+|------|-----|
+| `frontend/src/api/reports.ts` | Reporting API client and export helpers |
+| `frontend/src/api/reports.types.ts` | TypeScript interfaces for report payloads |
+| `frontend/src/api/reports.test.ts` | API client unit tests |
+| `frontend/src/pages/reports/*` | Pages, shared layout, components, styles, tests |
+| `frontend/src/routes.tsx` | Centralized report route definitions |
+| `frontend/src/App.tsx` | Include report routes |
+| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Reports navigation entry |
+| `frontend/src/content/index.ts` | Sidebar/report copy strings |
 
 ## Verification
 
 ```bash
+# Backend
 cd backend
 SECRET_KEY=test-secret PYTHONPATH=src DJANGO_SETTINGS_MODULE=core.settings.test \
-  python3 -m pytest src/delivery/tests/ -v
+  python3 -m pytest src/reporting/tests/ -v
+python3 -m flake8 src/reporting/ src/authentication/report_permissions.py src/core/storage.py
 
-python3 -m flake8 src/delivery/permissions.py src/delivery/preview_views.py \
-  src/delivery/preview_urls.py src/delivery/serializers.py \
-  src/delivery/services/preview.py src/delivery/tests/test_preview_api.py \
-  src/delivery/tests/test_preview_service.py
+# Frontend
+cd frontend
+npm test
+npm run lint
+npm run build
 ```
 
 ## Open Questions / Follow-ups
 
-- Should coordinators also preview tests they manage?
-- Add audit `log_action` entries for preview of unreleased tests?
-- Introduce a first-class `Test` model to replace UUID + metadata tagging?
+- Add a dedicated Progress report page wired to `GET /api/reports/progress/`.
+- Should candidates export individual reports with organization branding?
+- Add audit log entries for sensitive aggregate report access?
+- Introduce a first-class `Test` model to simplify `test_id` lookups in UI pickers?
