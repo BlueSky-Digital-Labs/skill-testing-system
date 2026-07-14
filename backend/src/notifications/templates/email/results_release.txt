@@ -1,0 +1,9 @@
+Hello {{ candidate_name }},
+
+Your results for {{ test_title }} are now available.
+
+View your results here:
+
+{{ results_url }}
+
+{{ organization_name }}

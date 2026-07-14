@@ -76,6 +76,9 @@ urlpatterns = [
     # Attempt delivery
     path('api/attempts/', include('delivery.urls')),
 
+    # Notifications and monitoring
+    path('api/', include('delivery.notification_urls')),
+
     # Author preview / practice emulation (non-persistent)
     path('api/preview/', include('delivery.preview_urls')),
 

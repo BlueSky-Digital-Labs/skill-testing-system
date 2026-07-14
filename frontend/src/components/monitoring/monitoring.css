@@ -1,0 +1,122 @@
+.monitoring-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.monitoring-summary__card {
+  border: 1px solid var(--hd-border-light);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: var(--hd-surface, #fff);
+}
+
+.monitoring-summary__label {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--hd-text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.monitoring-summary__value {
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.monitoring-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  padding: 1rem;
+  border: 1px solid var(--hd-border-light);
+  border-radius: 10px;
+  background: var(--hd-surface, #fff);
+}
+
+.monitoring-actions__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.monitoring-actions__filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: var(--hd-text-secondary);
+}
+
+.monitoring-actions__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+.monitoring-actions__controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--hd-text-secondary);
+}
+
+.monitoring-actions__controls select,
+.monitoring-actions__controls input {
+  min-width: 160px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--hd-border-light);
+  border-radius: 8px;
+}
+
+.monitoring-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.monitoring-loading {
+  color: var(--hd-text-secondary);
+}
+
+.monitoring-alert {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}
+
+.monitoring-alert--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.monitoring-test-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.monitoring-test-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--hd-text-secondary);
+}
+
+.monitoring-test-picker input {
+  min-width: 320px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--hd-border-light);
+  border-radius: 8px;
+}
+
+.monitoring-meta {
+  color: var(--hd-text-secondary);
+  font-size: 0.875rem;
+}

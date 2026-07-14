@@ -18,6 +18,7 @@ import {
   BookOpen,
   CalendarClock,
   BarChart3,
+  Activity,
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -55,6 +56,15 @@ export const Sidebar = () => {
             icon: BookOpen,
             label: sidebarContent.menuItems.questionBank,
             path: '/questions',
+          },
+        ]
+      : []),
+    ...(isCoordinator || isSystemAdmin
+      ? [
+          {
+            icon: Activity,
+            label: sidebarContent.menuItems.monitoring,
+            path: '/monitoring',
           },
         ]
       : []),

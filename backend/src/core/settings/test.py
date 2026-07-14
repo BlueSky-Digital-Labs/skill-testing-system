@@ -22,7 +22,10 @@ PASSWORD_HASHERS = [
 ]
 
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+EMAIL_PROVIDER = 'console'
 FRONTEND_URL = 'http://localhost:3000'
+RESEND_INVITE_THROTTLE_SECONDS = 60
+INVITATION_URL_EXPIRE_SECONDS = 3600
 ALLOW_SELF_REGISTRATION = True
 MEDIA_ROOT = BASE_DIR / 'test_media'
 
