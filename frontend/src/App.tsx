@@ -20,6 +20,7 @@ import TestStartPage from '@pages/tests/[id]/start'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
 import { SystemAdminRoute } from '@components/organisms/SystemAdminRoute'
+import PreviewRunnerPage from '@pages/tests/[id]/preview'
 import { withCoordinatorGuard, withExaminerGuard } from '@/auth/guards'
 
 const CoordinatorGroupsList = withCoordinatorGuard(GroupsList)
@@ -28,6 +29,7 @@ const CoordinatorAssignmentsList = withCoordinatorGuard(AssignmentsListPage)
 const ExaminerQuestionsList = withExaminerGuard(QuestionsList)
 const ExaminerQuestionEditPage = withExaminerGuard(QuestionEditPage)
 const ExaminerImportPage = withExaminerGuard(ImportPage)
+const ExaminerPreviewRunnerPage = withExaminerGuard(PreviewRunnerPage)
 
 function App() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
@@ -137,6 +139,8 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route path="/tests/:id/preview" element={<ExaminerPreviewRunnerPage />} />
 
       <Route
         path="/admin/results/release/:attemptId"

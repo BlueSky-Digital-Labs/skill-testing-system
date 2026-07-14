@@ -7,6 +7,12 @@ vi.mock('@components/templates/DashboardLayout', () => ({
   DashboardLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock('@/components/preview', () => ({
+  PreviewLauncher: ({ testId }: { testId: string }) => (
+    <a href={`/tests/${testId}/preview`}>Preview test</a>
+  ),
+}))
+
 const listAssignments = vi.fn()
 
 vi.mock('./assign/api', () => ({
@@ -56,6 +62,10 @@ describe('TestDetailPage', () => {
     expect(listAssignments).toHaveBeenCalledWith({
       test_id: '11111111-1111-4111-8111-111111111111',
     })
+    expect(screen.getByRole('link', { name: 'Preview test' })).toHaveAttribute(
+      'href',
+      '/tests/11111111-1111-4111-8111-111111111111/preview',
+    )
   })
 
   it('renders version badges for questions with version numbers', () => {
