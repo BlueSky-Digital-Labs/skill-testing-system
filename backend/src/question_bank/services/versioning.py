@@ -130,3 +130,17 @@ def snapshot_many(
 ) -> list[QuestionVersion]:
     """Create snapshots for multiple questions."""
     return [create_snapshot(question, created_by=created_by) for question in questions]
+
+
+def snapshot_questions_by_id(
+    questions: Iterable[Question],
+    *,
+    created_by=None,
+) -> dict:
+    """
+    Create snapshots for multiple questions and return a question_id mapping.
+
+    Intended for test publish flows that need pinned QuestionVersion rows.
+    """
+    versions = snapshot_many(questions, created_by=created_by)
+    return {version.question_id: version for version in versions}

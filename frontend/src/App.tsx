@@ -9,9 +9,11 @@ import { AuditPage } from '@pages/admin/audit'
 import { UsersPage, RolesPage } from '@pages/admin'
 import { GradingList, GradingDetail } from '@pages/grading'
 import { TestAssignPage } from '@pages/tests/assign'
+import { TestsListPage } from '@pages/tests'
+import { TestEditorPage } from '@pages/tests/[id]'
+import { TestPreviewPage } from '@pages/tests/preview'
 import { GroupsList, GroupDetail } from '@pages/coordinator'
 import { QuestionsList, QuestionEditPage, ImportPage } from '@pages/questions'
-import { TestDetailPage } from '@pages/tests/TestDetailPage'
 import { ReleaseControl, CandidateResult } from '@pages/results'
 import { AttemptCompletionPage } from '@pages/attempts'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
@@ -24,6 +26,9 @@ const CoordinatorGroupDetail = withCoordinatorGuard(GroupDetail)
 const ExaminerQuestionsList = withExaminerGuard(QuestionsList)
 const ExaminerQuestionEditPage = withExaminerGuard(QuestionEditPage)
 const ExaminerImportPage = withExaminerGuard(ImportPage)
+const ExaminerTestsListPage = withExaminerGuard(TestsListPage)
+const ExaminerTestEditorPage = withExaminerGuard(TestEditorPage)
+const ExaminerTestPreviewPage = withExaminerGuard(TestPreviewPage)
 
 function App() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
@@ -106,6 +111,7 @@ function App() {
         }
       />
 
+      <Route path="/tests" element={<ExaminerTestsListPage />} />
       <Route
         path="/tests/:testId/assign"
         element={
@@ -114,6 +120,8 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/tests/:id/preview" element={<ExaminerTestPreviewPage />} />
+      <Route path="/tests/:id" element={<ExaminerTestEditorPage />} />
 
       <Route path="/coordinator/groups" element={<CoordinatorGroupsList />} />
       <Route path="/coordinator/groups/:id" element={<CoordinatorGroupDetail />} />
@@ -122,15 +130,6 @@ function App() {
       <Route path="/questions/import" element={<ExaminerImportPage />} />
       <Route path="/questions/new" element={<ExaminerQuestionEditPage />} />
       <Route path="/questions/:id/edit" element={<ExaminerQuestionEditPage />} />
-
-      <Route
-        path="/tests/:testId"
-        element={
-          <ProtectedRoute isAuthenticated={isAuthenticated}>
-            <TestDetailPage />
-          </ProtectedRoute>
-        }
-      />
 
       <Route
         path="/admin/results/release/:attemptId"

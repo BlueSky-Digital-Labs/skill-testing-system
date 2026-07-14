@@ -25,13 +25,13 @@ GUARDED_QUESTION_FIELDS = frozenset(
 
 
 def is_in_published_test(question: Question) -> bool:
-    """
-    Return True when a question is referenced by a published test.
+    """Return True when a question is referenced by a published test."""
+    from tests.models import TestLifecycle, TestQuestionLink
 
-    Provisional implementation: always returns False until test-bank
-    publishing integration lands in a follow-up change.
-    """
-    return False
+    return TestQuestionLink.objects.filter(
+        question=question,
+        section__test__lifecycle=TestLifecycle.PUBLISHED,
+    ).exists()
 
 
 def _raise_if_published(question: Question, *, action: str) -> None:

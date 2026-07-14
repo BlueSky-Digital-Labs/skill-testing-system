@@ -1,51 +1,43 @@
-# Task Context: Question Version-Aware Authoring UI (Frontend)
+# Task Context: Test Builder UI (Frontend)
 
-**Branch:** `sunset/task/28-24e719fa`  
-**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/17
+**Branch:** `sunset/task/feat-26133733`  
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/18
 
 ## Scope
 
-Add version-aware authoring UI for question authors in the frontend, displaying version numbers, warning banners, save confirmation modals, and placeholder version history — integrated with existing question authoring components and optional backend versioning fields.
+Implement examiner-facing Test Builder UI in the React frontend: list page, editor page, reusable builder components, React Query API integration, validation, and tests.
 
 ### In scope (completed)
-- `QuestionEditPage.tsx` — version label, warning banner, save confirmation modal, collapsible version history
-- `TestDetailPage.tsx` — placeholder test detail view with per-question version badges
-- Shared components: `QuestionVersionBadge`, `SaveVersionConfirmModal`, `VersionHistorySection`
-- Optional `latest_version_number` / `version_history` fields on `Question` type
-- Version column on `QuestionsList` when data is present
-- Vitest coverage for version display, warnings, modal flow, placeholders, and error handling
+- Routes: `/tests` (list), `/tests/:id` (editor), `/tests/:id/preview` (read-only preview)
+- Components under `frontend/src/components/tests/`: meta form, rules builder, question picker, settings/integrity/visibility panels, lifecycle controls, preview launcher
+- API client `frontend/src/api/tests.ts` with React Query hooks in `hooks/useTests.ts`
+- Form validation via `utils/testBuilder.ts`
+- Vitest coverage for components, pages, API client, and validation helpers
+- Minimal backend `GET /api/tests/` list endpoint to support the list page
 
 ### Out of scope / deferred
-- Backend API exposure of `latest_version_number` and version history (UI hides version elements when absent)
-- Full test detail data fetching from backend
-- Deep-linking to individual version snapshots
+- Full candidate-facing test delivery UI
+- Deep question preview with live question bank text in preview table
+- Sidebar navigation link (can be added when IA is finalized)
 
 ## Key Implementation Decisions
 
-1. **`QuestionEditPage` replaces inline editor logic**: `QuestionEditor.tsx` re-exports `QuestionEditPage` for backward compatibility with existing routes/tests.
-2. **Graceful degradation**: Version UI renders only when `latest_version_number` is a number ≥ 1; missing/incomplete API data hides badges, warnings, and save modal.
-3. **Save confirmation**: Edit saves for versioned questions open an accessible modal (focus trap, Escape, `aria-*`) before calling `updateQuestion`.
-4. **Version history**: Collapsible section lists `version_history` when provided; otherwise shows a placeholder message for future backend links.
-5. **`TestDetailPage` props**: Accepts optional `questions` with `versionNumber` for badge display until test composition API lands.
+1. **React Query introduced** via `@tanstack/react-query` and `QueryClientProvider` in `main.tsx` for test builder data flows.
+2. **Single-section editor model** maps UI state to one backend section with `assembly_mode` in section settings.
+3. **Examiner guard** on list/editor/preview routes; assignment route remains coordinator-accessible via existing page.
+4. **Preview route** shows pinned question link metadata; full question text preview deferred until detail API enrichment.
+5. **Backend list endpoint** added on same branch (`GET /api/tests/`) because prior API only supported create/detail.
 
 ## Files Changed
 
-| File | Why |
-|------|-----|
-| `frontend/src/types/questionBank.ts` | Optional version fields on `Question` |
-| `frontend/src/pages/questions/QuestionEditPage.tsx` | Version-aware edit page |
-| `frontend/src/pages/questions/QuestionEditor.tsx` | Re-export shim |
-| `frontend/src/pages/questions/components/QuestionVersionBadge.tsx` | Reusable version badge |
-| `frontend/src/pages/questions/components/SaveVersionConfirmModal.tsx` | Accessible save confirmation |
-| `frontend/src/pages/questions/components/VersionHistorySection.tsx` | Collapsible history / placeholder |
-| `frontend/src/pages/questions/QuestionEditPage.test.tsx` | Version UI tests |
-| `frontend/src/pages/questions/QuestionsList.tsx` | Version column in list |
-| `frontend/src/pages/questions/questions.css` | Version UI styles |
-| `frontend/src/pages/questions/index.ts` | Export `QuestionEditPage` |
-| `frontend/src/pages/tests/TestDetailPage.tsx` | Test detail placeholder with badges |
-| `frontend/src/pages/tests/TestDetailPage.test.tsx` | Badge/placeholder tests |
-| `frontend/src/pages/tests/tests.css` | Test page styles |
-| `frontend/src/App.tsx` | Routes for edit page and test detail |
+| Area | Files | Why |
+|------|-------|-----|
+| Frontend pages | `pages/tests/index.tsx`, `[id].tsx`, `preview.tsx` | List, editor, preview routes |
+| Frontend components | `components/tests/*` | Builder UI panels |
+| Frontend API/hooks | `api/tests.ts`, `hooks/useTests.ts`, `types/tests.ts`, `utils/testBuilder.ts` | API + state + validation |
+| Frontend app | `App.tsx`, `main.tsx`, `types/index.ts` | Routing and React Query setup |
+| Frontend tests | `*.test.tsx`, `api/tests.test.ts`, `utils/testBuilder.test.ts` | Coverage |
+| Backend (supporting) | `tests/views.py` | `GET /api/tests/` list endpoint |
 
 ## Verification
 
@@ -55,13 +47,15 @@ npm ci
 npm test
 npm run lint
 npm run build
+
+cd ../backend
+SECRET_KEY=test-secret DJANGO_SETTINGS_MODULE=core.settings.test PYTHONPATH=src python3 -m pytest src/tests/tests/ -v
 ```
 
-Results: **141** frontend tests passed (9 new version UI tests).
+Results: **154** frontend tests passed; backend tests app tests pass.
 
 ## Open Questions / Follow-ups
 
-- Expose `latest_version_number` and `version_history` from Django `QuestionSerializer`
-- Wire `TestDetailPage` to real test composition API
-- Auto-call `create_snapshot` on question update in backend views
-- Add version history deep links when REST endpoints exist
+- Enrich preview with question bank text joins
+- Add `/tests` link to sidebar navigation
+- Support multi-section editing in UI when product requires it

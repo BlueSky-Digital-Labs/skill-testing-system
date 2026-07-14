@@ -111,6 +111,9 @@ urlpatterns = [
 
     # Results release and candidate visibility
     path('api/results/', include('results.urls')),
+
+    # Test assembly
+    path('api/tests/', include('tests.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
