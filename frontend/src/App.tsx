@@ -5,10 +5,12 @@ import { LoginPage, RegisterPage, SignIn, ForgotPassword, ResetPassword } from '
 import { DashboardPage } from '@pages/dashboard'
 import { BrandingPage } from '@pages/admin/branding'
 import { AuditPage } from '@pages/admin/audit'
+import { UsersPage, RolesPage } from '@pages/admin'
 import { GradingList, GradingDetail } from '@pages/grading'
 import { TestAssignPage } from '@pages/tests/assign'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
+import { SystemAdminRoute } from '@components/organisms/SystemAdminRoute'
 
 function App() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
@@ -51,6 +53,24 @@ function App() {
           <AdminRoute isAuthenticated={isAuthenticated}>
             <AuditPage />
           </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/users"
+        element={
+          <SystemAdminRoute isAuthenticated={isAuthenticated}>
+            <UsersPage />
+          </SystemAdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/roles"
+        element={
+          <SystemAdminRoute isAuthenticated={isAuthenticated}>
+            <RolesPage />
+          </SystemAdminRoute>
         }
       />
 

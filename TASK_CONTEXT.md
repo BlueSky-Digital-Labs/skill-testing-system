@@ -1,45 +1,57 @@
-# Task Context: Frontend Test Assignment UI (Task #13 / sunset/task/feat-frontend-assign)
+# Task Context: Admin User & Role Management UI
 
 ## Scope
 
-Implement a coordinator-facing React UI for assigning tests to users and groups:
+Implement a React/Vite admin UI for managing users and roles:
 
-- Route `/tests/:testId/assign` rendering `TestAssignPage`
-- Assignment form with datetime windows, attempt limits, shuffle toggles, and comma-separated user/group UUID entry
-- Page-local API client for bulk assignment creation and filtered listing
-- Assignments table with state/status filters
-- React Testing Library coverage for submission, validation, filtering, and partial failure feedback
+- API client at `frontend/src/api/admin.ts` for `/api/admin/users/` and `/api/admin/roles/`
+- `/admin/users` — searchable, paginated user list with create/edit modal and activation toggle
+- `/admin/roles` — role list with create/edit modal; `SYSTEM_ADMIN` cannot be deactivated in the UI
+- `RoleMultiSelect` component for assigning roles by key
+- `SystemAdminRoute` guard and sidebar links visible only to `SYSTEM_ADMIN` users
+- Vitest/RTL tests for API client, component, and pages
+- `frontend/README.md` admin access instructions
 
 ## Key Implementation Decisions
 
-1. **Route guard**: Uses `ProtectedRoute` (not `AdminRoute`) because coordinators may not pass staff/branding checks; the backend assignments API enforces `COORDINATOR` / `SYSTEM_ADMIN` roles.
-2. **Bulk creation**: `postBulkAssignments()` fans out to one `POST /api/assignments/` per assignee, chunked in batches of 25 with per-assignee error collection and a summary message when partial failures occur.
-3. **Same-origin API**: Uses existing `authorizedFetch` + `getApiBase()` (`/api` relative path) — no absolute URLs.
-4. **Datetime UX**: `datetime-local` inputs convert to ISO via `Date.toISOString()`; `dueAt` / `closesAt` stay disabled until `opensAt` is set and receive +1 / +2 day suggestions when opens changes.
-5. **Validation**: Client-side checks for at least one assignee, UUID format, temporal ordering (`opensAt <= dueAt <= closesAt`), and `maxAttempts >= 1` in `validation.ts`.
-6. **Feedback ordering**: Submit success/error messages are applied after list refresh so `loadAssignments()` does not clear partial-failure errors.
+1. **Access control**: Users/roles endpoints require `SYSTEM_ADMIN` (not staff/branding). Added `SystemAdminRoute` and `useSystemAdminAccess` that probe `GET /api/admin/roles/`; branding/grading/audit keep existing `AdminRoute` / `useAdminAccess`.
+2. **Role sync on user save**: Backend assigns roles via `assign-role` / `remove-role` actions, not the main user serializer. `createUser` / `updateUser` orchestrate those calls after `POST`/`PATCH`.
+3. **Search param mapping**: `listUsers(q)` maps `q` to backend `email` query filter.
+4. **401 handling**: `admin.ts` clears tokens and redirects to `/login` on `401`, consistent with session expiry behavior elsewhere.
+5. **Field errors**: Validation responses attach `fieldErrors` on thrown `ApiError` for inline form messages.
 
 ## Files Changed
 
 | File | Why |
 |------|-----|
-| `frontend/src/pages/tests/assign/index.tsx` | `TestAssignPage` — wires form, table, and API |
-| `frontend/src/pages/tests/assign/AssignForm.tsx` | Assignment creation form |
-| `frontend/src/pages/tests/assign/AssignmentsTable.tsx` | Filterable assignments table |
-| `frontend/src/pages/tests/assign/api.ts` | `postBulkAssignments`, `listAssignments` |
-| `frontend/src/pages/tests/assign/validation.ts` | Form validation helpers |
-| `frontend/src/pages/tests/assign/TestAssignPage.css` | Page styling |
-| `frontend/src/pages/tests/assign/__tests__/TestAssignPage.test.tsx` | RTL tests |
-| `frontend/src/App.tsx` | Registered `/tests/:testId/assign` route |
+| `frontend/src/api/admin.ts` | Admin API types and functions |
+| `frontend/src/api/admin.test.ts` | API client unit tests |
+| `frontend/src/components/RoleMultiSelect.tsx` | Multi-role checkbox selector |
+| `frontend/src/components/RoleMultiSelect.css` | Role selector styles |
+| `frontend/src/components/RoleMultiSelect.test.tsx` | Component tests |
+| `frontend/src/components/organisms/SystemAdminRoute/*` | Route guard for system admins |
+| `frontend/src/hooks/useSystemAdminAccess.ts` | Sidebar/route access hook |
+| `frontend/src/hooks/index.ts` | Export new hook |
+| `frontend/src/pages/admin/UsersPage.tsx` | User management page |
+| `frontend/src/pages/admin/UsersPage.test.tsx` | Users page tests |
+| `frontend/src/pages/admin/RolesPage.tsx` | Role management page |
+| `frontend/src/pages/admin/RolesPage.test.tsx` | Roles page tests |
+| `frontend/src/pages/admin/admin.css` | Shared admin page styles |
+| `frontend/src/pages/admin/index.ts` | Page exports |
+| `frontend/src/App.tsx` | Registered `/admin/users` and `/admin/roles` |
+| `frontend/src/components/organisms/Sidebar/Sidebar.tsx` | Conditional Users/Roles nav |
+| `frontend/README.md` | Admin access documentation |
 
 ## API Integration
 
 | Function | Endpoint | Notes |
 |----------|----------|-------|
-| `listAssignments(params)` | `GET /api/assignments/` | Filters: `test_id`, `state`, `status`, etc. |
-| `postBulkAssignments(payload)` | `POST /api/assignments/` (per assignee) | Chunked; returns `{ created, failed }` |
-
-Depends on backend assignments API from PR #8 (`sunset/task/feat-f7d06aea`).
+| `listUsers(q, page)` | `GET /api/admin/users/?email=&page=` | Paginated (20/page) |
+| `createUser(payload)` | `POST /api/admin/users/` + assign-role | Roles synced after create |
+| `updateUser(id, patch)` | `PATCH /api/admin/users/:id/` + role actions | Optional `roles` array |
+| `listRoles()` | `GET /api/admin/roles/` | Also used for access probe |
+| `createRole(payload)` | `POST /api/admin/roles/` | |
+| `updateRole(id, patch)` | `PATCH /api/admin/roles/:id/` | |
 
 ## Verification
 
@@ -51,11 +63,10 @@ npm run lint
 npm run build
 ```
 
-Navigate to `/tests/<test-uuid>/assign` while authenticated as a coordinator or system admin.
+Sign in as a `SYSTEM_ADMIN` user and open `/admin/users` or `/admin/roles`.
 
 ## Open Questions / Follow-ups
 
-- Add sidebar navigation link once a test catalog/list page exists.
-- Replace comma-separated UUID inputs with searchable user/group pickers.
-- Dedicated coordinator route guard that probes assignments API instead of generic auth.
-- Surface archive action and pagination in the assignments table.
+- Add password reset invite flow when creating users without a password.
+- Paginate roles list if custom roles grow beyond one page.
+- Consolidate `AdminRoute` and `SystemAdminRoute` behind a single configurable guard.

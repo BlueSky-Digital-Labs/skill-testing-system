@@ -1,0 +1,1 @@
+export { SystemAdminRoute } from './SystemAdminRoute'

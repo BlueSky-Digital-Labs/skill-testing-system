@@ -322,6 +322,19 @@ Tokens are stored in `localStorage` via `src/api/authStorage.ts`. Optional `src/
 
 Legacy Redux login/register pages remain at `/login` and `/register`.
 
+### Admin User & Role Management
+
+System administrators (`SYSTEM_ADMIN` role) can manage users and roles from the dashboard sidebar:
+
+| Route | Page | Access |
+|-------|------|--------|
+| `/admin/users` | User list, search, create/edit modal, activation toggle | `SYSTEM_ADMIN` |
+| `/admin/roles` | Role list, create/edit modal | `SYSTEM_ADMIN` |
+
+**Initial access:** You need at least one active user with the `SYSTEM_ADMIN` role before these pages are available. Seed or promote an administrator via the backend (Django admin, management command, or database migration) and sign in at `/auth/sign-in`. The sidebar shows **Users** and **Roles** only when the current session passes the system-admin access check (`GET /api/admin/roles/`).
+
+**API client:** `src/api/admin.ts` wraps `GET/POST/PATCH /api/admin/users/` and `/api/admin/roles/`, including role assignment via `assign-role` / `remove-role` actions when creating or updating users.
+
 ## 🛠 Development Tools
 
 ### Available Scripts
