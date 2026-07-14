@@ -13,6 +13,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
+        libfreetype6-dev \
+        libjpeg-dev \
+        zlib1g-dev \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
