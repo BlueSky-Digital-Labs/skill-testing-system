@@ -1,7 +1,7 @@
 # Task Context: Deterministic Attempt Shuffle Seeds
 
-**Branch:** `sunset/task/attempt-shuffle-seeds`  
-**PR:** _(pending)_
+**Branch:** `sunset/task/feat-f69d79e6` (also `sunset/task/attempt-shuffle-seeds`)  
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/21
 
 ## Scope
 
