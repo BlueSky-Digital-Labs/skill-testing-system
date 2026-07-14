@@ -1,7 +1,7 @@
 # Task Context: Certificate Generation Backend (FR-27)
 
 **Branch:** `sunset/task/feat-4ac05372`  
-**PR:** _(to be created)_
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/22
 
 ## Scope
 
