@@ -2,7 +2,6 @@
 Assignment-specific DRF permissions.
 """
 
-from authentication.models import RoleKey
-from core.permissions import HasAnyRole
+from core.permissions import IsCoordinatorOrAdmin
 
-IsCoordinatorOrAdmin = HasAnyRole(RoleKey.COORDINATOR, RoleKey.SYSTEM_ADMIN)
+__all__ = ['IsCoordinatorOrAdmin']

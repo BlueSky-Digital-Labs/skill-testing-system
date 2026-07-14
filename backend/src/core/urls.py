@@ -65,6 +65,9 @@ urlpatterns = [
     # Assignments
     path('api/', include(assignments_router.urls)),
 
+    # Core APIs (candidate groups, etc.)
+    path('api/core/', include('core.api_urls')),
+
     # Branding / organization settings
     path('', include('branding.urls')),
 

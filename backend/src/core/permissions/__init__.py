@@ -2,6 +2,7 @@
 Shared DRF permission classes.
 """
 
+from authentication.models import RoleKey
 from rest_framework.permissions import BasePermission
 
 from authentication.utils import user_has_role
@@ -37,3 +38,6 @@ def HasAnyRole(*allowed):
             )
 
     return _HasAnyRole
+
+
+IsCoordinatorOrAdmin = HasAnyRole(RoleKey.COORDINATOR, RoleKey.SYSTEM_ADMIN)

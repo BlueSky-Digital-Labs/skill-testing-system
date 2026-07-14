@@ -188,6 +188,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Grading', 'description': 'Objective question auto-scoring endpoints'},
         {'name': 'Audit', 'description': 'Hash-chained audit logging and verification'},
         {'name': 'Assignments', 'description': 'Exam assignment scheduling and availability'},
+        {'name': 'Candidate Groups', 'description': 'Candidate group membership management'},
     ],
 }
 
