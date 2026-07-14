@@ -10,7 +10,8 @@ import { UsersPage, RolesPage } from '@pages/admin'
 import { GradingList, GradingDetail } from '@pages/grading'
 import { TestAssignPage } from '@pages/tests/assign'
 import { GroupsList, GroupDetail } from '@pages/coordinator'
-import { QuestionsList, QuestionEditor, ImportPage } from '@pages/questions'
+import { QuestionsList, QuestionEditPage, ImportPage } from '@pages/questions'
+import { TestDetailPage } from '@pages/tests/TestDetailPage'
 import { ReleaseControl, CandidateResult } from '@pages/results'
 import { AttemptCompletionPage } from '@pages/attempts'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
@@ -21,7 +22,7 @@ import { withCoordinatorGuard, withExaminerGuard } from '@/auth/guards'
 const CoordinatorGroupsList = withCoordinatorGuard(GroupsList)
 const CoordinatorGroupDetail = withCoordinatorGuard(GroupDetail)
 const ExaminerQuestionsList = withExaminerGuard(QuestionsList)
-const ExaminerQuestionEditor = withExaminerGuard(QuestionEditor)
+const ExaminerQuestionEditPage = withExaminerGuard(QuestionEditPage)
 const ExaminerImportPage = withExaminerGuard(ImportPage)
 
 function App() {
@@ -119,8 +120,17 @@ function App() {
 
       <Route path="/questions" element={<ExaminerQuestionsList />} />
       <Route path="/questions/import" element={<ExaminerImportPage />} />
-      <Route path="/questions/new" element={<ExaminerQuestionEditor />} />
-      <Route path="/questions/:id/edit" element={<ExaminerQuestionEditor />} />
+      <Route path="/questions/new" element={<ExaminerQuestionEditPage />} />
+      <Route path="/questions/:id/edit" element={<ExaminerQuestionEditPage />} />
+
+      <Route
+        path="/tests/:testId"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <TestDetailPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/admin/results/release/:attemptId"
