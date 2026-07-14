@@ -1,7 +1,7 @@
 # Task Context: Docker Build + Frontend Stack Overflow Fix
 
 **Branch:** `sunset/task/42-3385d121`  
-**PR:** _(pending)_
+**PR:** https://github.com/BlueSky-Digital-Labs/skill-testing-system/pull/19
 
 ## Scope
 
