@@ -11,6 +11,7 @@ import { GradingList, GradingDetail } from '@pages/grading'
 import { TestAssignPage } from '@pages/tests/assign'
 import { GroupsList, GroupDetail } from '@pages/coordinator'
 import { QuestionsList, QuestionEditor } from '@pages/questions'
+import { ReleaseControl, CandidateResult } from '@pages/results'
 import { ProtectedRoute } from '@components/organisms/ProtectedRoute'
 import { AdminRoute } from '@components/organisms/AdminRoute'
 import { SystemAdminRoute } from '@components/organisms/SystemAdminRoute'
@@ -117,6 +118,24 @@ function App() {
       <Route path="/questions" element={<ExaminerQuestionsList />} />
       <Route path="/questions/new" element={<ExaminerQuestionEditor />} />
       <Route path="/questions/:id/edit" element={<ExaminerQuestionEditor />} />
+
+      <Route
+        path="/admin/results/release/:attemptId"
+        element={
+          <AdminRoute isAuthenticated={isAuthenticated}>
+            <ReleaseControl />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/results/:attemptId"
+        element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <CandidateResult />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   )
 }
