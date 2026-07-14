@@ -7,7 +7,8 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 
-from .models import PasswordResetToken, User
+from .models import PasswordResetToken, Role, RoleKey, User, UserRole
+from .utils import get_active_system_admin_count
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -152,6 +153,126 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
+        return value
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ('id', 'key', 'name', 'description', 'is_active')
+        read_only_fields = ('id',)
+
+    def validate_key(self, value):
+        if self.instance is not None and value != self.instance.key:
+            raise serializers.ValidationError('Role key cannot be changed.')
+        return value
+
+    def validate(self, attrs):
+        is_active = attrs.get(
+            'is_active',
+            getattr(self.instance, 'is_active', True),
+        )
+        key = attrs.get('key', getattr(self.instance, 'key', None))
+        if (
+            self.instance
+            and self.instance.key == RoleKey.SYSTEM_ADMIN
+            and is_active is False
+        ):
+            raise serializers.ValidationError(
+                {'is_active': 'The SYSTEM_ADMIN role cannot be deactivated.'}
+            )
+        if key == RoleKey.SYSTEM_ADMIN and is_active is False:
+            raise serializers.ValidationError(
+                {'is_active': 'The SYSTEM_ADMIN role cannot be deactivated.'}
+            )
+        return attrs
+
+
+class UserRoleSerializer(serializers.ModelSerializer):
+    role = RoleSerializer(read_only=True)
+
+    class Meta:
+        model = UserRole
+        fields = ('id', 'role', 'assigned_at', 'assigned_by')
+        read_only_fields = fields
+
+
+class UserSerializer(serializers.ModelSerializer):
+    username = serializers.EmailField(source='email', read_only=True)
+    roles = serializers.SerializerMethodField()
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'username',
+            'first_name',
+            'last_name',
+            'is_active',
+            'roles',
+            'password',
+        )
+        read_only_fields = ('id',)
+
+    def get_roles(self, obj):
+        assignments = obj.user_roles.select_related('role').filter(
+            role__is_active=True,
+        )
+        roles = [assignment.role for assignment in assignments]
+        return RoleSerializer(roles, many=True).data
+
+    def validate(self, attrs):
+        is_active = attrs.get('is_active', getattr(self.instance, 'is_active', True))
+        if self.instance and is_active is False:
+            if user_has_system_admin_role(self.instance):
+                remaining = get_active_system_admin_count(
+                    exclude_user_id=self.instance.pk,
+                )
+                if remaining == 0:
+                    raise serializers.ValidationError({
+                        'is_active': (
+                            'Cannot deactivate the last active '
+                            'system administrator.'
+                        ),
+                    })
+        return attrs
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        user = User.objects.create_user(**validated_data)
+        if password:
+            user.set_password(password)
+            user.save(update_fields=['password'])
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        user = super().update(instance, validated_data)
+        if password:
+            user.set_password(password)
+            user.save(update_fields=['password'])
+        return user
+
+
+def user_has_system_admin_role(user) -> bool:
+    return user.user_roles.filter(
+        role__key=RoleKey.SYSTEM_ADMIN,
+        role__is_active=True,
+    ).exists()
+
+
+class UserRoleAssignSerializer(serializers.Serializer):
+    role_key = serializers.ChoiceField(choices=RoleKey.choices)
+
+    def validate_role_key(self, value):
+        try:
+            role = Role.objects.get(key=value)
+        except Role.DoesNotExist:
+            raise serializers.ValidationError('Role does not exist.')
+        if not role.is_active:
+            raise serializers.ValidationError('Cannot assign an inactive role.')
         return value
 
 

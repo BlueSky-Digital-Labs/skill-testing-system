@@ -48,16 +48,72 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
+class RoleKey(models.TextChoices):
+    SYSTEM_ADMIN = 'SYSTEM_ADMIN', 'System Admin'
+    EXAMINER = 'EXAMINER', 'Examiner'
+    COORDINATOR = 'COORDINATOR', 'Coordinator'
+    CANDIDATE = 'CANDIDATE', 'Candidate'
+
+
+class Role(models.Model):
+    key = models.CharField(max_length=50, unique=True, choices=RoleKey.choices)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'auth_role'
+        ordering = ['key']
+
+    def __str__(self):
+        return self.name
+
+
+class UserRole(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='user_roles',
+    )
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.CASCADE,
+        related_name='user_roles',
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='roles_assigned',
+    )
+
+    class Meta:
+        db_table = 'auth_user_role'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'role'],
+                name='unique_user_role',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} -> {self.role.key}'
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     """
     Custom user model that uses email as the unique identifier.
     """
-    
+
     email = models.EmailField(
         unique=True,
         db_index=True,
         help_text='Email address used for authentication'
     )
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)

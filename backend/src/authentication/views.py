@@ -3,7 +3,8 @@ Authentication views for user registration, login, and profile management.
 """
 
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,7 +19,9 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from drf_spectacular.openapi import OpenApiTypes
 
-from .models import User
+from core.permissions import IsSystemAdmin
+
+from .models import Role, RoleKey, User, UserRole
 from .password_reset import create_password_reset_token, send_password_reset_email
 from .serializers import (
     UserRegistrationSerializer,
@@ -29,7 +32,11 @@ from .serializers import (
     TokenObtainSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
+    RoleSerializer,
+    UserSerializer,
+    UserRoleAssignSerializer,
 )
+from .utils import get_active_system_admin_count, user_has_role
 
 
 @extend_schema(
@@ -193,7 +200,7 @@ def profile_view(request):
 
 
 @extend_schema(tags=['Users'])
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class AuthUserViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for reading user information (JWT protected).
     
@@ -255,6 +262,108 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         if email is not None:
             queryset = queryset.filter(email__icontains=email)
         return queryset
+
+
+@extend_schema(tags=['Admin Roles'])
+class RoleViewSet(viewsets.ModelViewSet):
+    queryset = Role.objects.all().order_by('key')
+    serializer_class = RoleSerializer
+    permission_classes = [IsSystemAdmin]
+    lookup_field = 'pk'
+
+    def perform_destroy(self, instance):
+        if instance.key == RoleKey.SYSTEM_ADMIN:
+            raise ValidationError(
+                {'detail': 'The SYSTEM_ADMIN role cannot be deleted.'}
+            )
+        if instance.user_roles.exists():
+            raise ValidationError(
+                {'detail': 'Cannot delete a role that is assigned to users.'}
+            )
+        instance.delete()
+
+
+@extend_schema(tags=['Admin Users'])
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('email')
+    serializer_class = UserSerializer
+    permission_classes = [IsSystemAdmin]
+
+    def get_queryset(self):
+        queryset = User.objects.all().order_by('email')
+        email = self.request.query_params.get('email')
+        if email is not None:
+            queryset = queryset.filter(email__icontains=email)
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            active_values = ('true', '1', 'yes')
+            queryset = queryset.filter(
+                is_active=is_active.lower() in active_values,
+            )
+        return queryset
+
+    def perform_destroy(self, instance):
+        if user_has_role(instance, RoleKey.SYSTEM_ADMIN):
+            remaining = get_active_system_admin_count(exclude_user_id=instance.pk)
+            if remaining == 0:
+                raise ValidationError(
+                    {'detail': 'Cannot delete the last active system administrator.'}
+                )
+        instance.is_active = False
+        instance.save(update_fields=['is_active'])
+
+    @extend_schema(
+        summary='Assign role to user',
+        request=UserRoleAssignSerializer,
+        responses={200: UserSerializer},
+    )
+    @action(detail=True, methods=['post'], url_path='assign-role')
+    def assign_role(self, request, pk=None):
+        user = self.get_object()
+        serializer = UserRoleAssignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        role = Role.objects.get(key=serializer.validated_data['role_key'])
+        UserRole.objects.get_or_create(
+            user=user,
+            role=role,
+            defaults={'assigned_by': request.user},
+        )
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary='Remove role from user',
+        request=UserRoleAssignSerializer,
+        responses={200: UserSerializer},
+    )
+    @action(detail=True, methods=['post'], url_path='remove-role')
+    def remove_role(self, request, pk=None):
+        user = self.get_object()
+        serializer = UserRoleAssignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        role_key = serializer.validated_data['role_key']
+        if role_key == RoleKey.SYSTEM_ADMIN:
+            if user_has_role(user, RoleKey.SYSTEM_ADMIN):
+                remaining = get_active_system_admin_count(exclude_user_id=user.pk)
+                if remaining == 0:
+                    return Response(
+                        {
+                            'detail': (
+                                'Cannot remove SYSTEM_ADMIN from the last '
+                                'active administrator.'
+                            ),
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+        deleted, _ = UserRole.objects.filter(
+            user=user,
+            role__key=role_key,
+        ).delete()
+        if not deleted:
+            return Response(
+                {'detail': 'User does not have this role.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
 
 
 # JWT Token Views with OpenAPI documentation
