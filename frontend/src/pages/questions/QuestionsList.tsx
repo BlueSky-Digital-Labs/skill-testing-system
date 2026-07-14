@@ -15,8 +15,7 @@ import {
   type Difficulty,
   type QuestionType,
 } from '@/types/questionBank'
-import '../admin/admin.css'
-import './questions.css'
+import { QuestionVersionBadge } from './components/QuestionVersionBadge'
 
 const PAGE_SIZE = 20
 
@@ -239,6 +238,7 @@ export function QuestionsList() {
                   <th>Difficulty</th>
                   <th>Type</th>
                   <th>Points</th>
+                  <th>Version</th>
                   <th>Updated</th>
                   <th>Actions</th>
                 </tr>
@@ -251,6 +251,15 @@ export function QuestionsList() {
                     <td>{DIFFICULTY_LABELS[question.difficulty]}</td>
                     <td>{QUESTION_TYPE_LABELS[question.type]}</td>
                     <td>{question.points}</td>
+                    <td>
+                      <QuestionVersionBadge
+                        versionNumber={question.latest_version_number}
+                      />
+                      {question.latest_version_number == null ||
+                      question.latest_version_number < 1 ? (
+                        <span className="questions-page__hint">—</span>
+                      ) : null}
+                    </td>
                     <td>{new Date(question.updated_at).toLocaleString()}</td>
                     <td>
                       <div className="admin-table__actions">

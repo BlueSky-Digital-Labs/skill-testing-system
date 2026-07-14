@@ -1,0 +1,8 @@
+.tests-page__empty {
+  margin: 0;
+  color: var(--hd-text-secondary);
+}
+
+.tests-page__version-placeholder {
+  color: var(--hd-text-secondary);
+}

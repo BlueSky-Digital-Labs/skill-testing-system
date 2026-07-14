@@ -21,6 +21,12 @@ export interface BlankAnswerKey {
   case_sensitive: boolean
 }
 
+export interface QuestionVersionSummary {
+  version_number: number
+  created_at: string
+  created_by_email?: string | null
+}
+
 export interface Question {
   id: string
   subject: string
@@ -37,6 +43,8 @@ export interface Question {
   blank_answer_keys: BlankAnswerKey[]
   created_at: string
   updated_at: string
+  latest_version_number?: number | null
+  version_history?: QuestionVersionSummary[]
 }
 
 export interface PaginatedQuestions {
